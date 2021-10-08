@@ -1,11 +1,6 @@
 package io.openmessaging;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.UnsupportedEncodingException;
-import java.io.Writer;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
@@ -15,7 +10,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class DefaultMessageQueueImpl extends MessageQueue {
 
@@ -56,7 +50,9 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            map.put(i, data);
+            if (data != null) {
+                map.put(i, data);
+            }
         }
         return map;
     }
@@ -119,7 +115,9 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             //byteBuffer.put()
             byteBuffer.put(topicBytes);
 
+            byteBuffer.flip();
             fileChannel.write(byteBuffer);
+            fileChannel.force(true);
             return commitLogOffset;
         }
 
@@ -127,13 +125,16 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             // file partition
 
             FileChannel fileChannel = FileChannel.open(Paths.get(Config.getInstance().getCommitLogFile()),
-                    StandardOpenOption.WRITE, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+                    StandardOpenOption.READ);
 
             ByteBuffer msgSizeBuffer = ByteBuffer.allocate(4);
+            msgSizeBuffer.clear();
             fileChannel.read(msgSizeBuffer, commitLogOffset);
+            msgSizeBuffer.flip();
             int msgSize = msgSizeBuffer.getInt();
 
             ByteBuffer buffer = ByteBuffer.allocate(msgSize);
+            buffer.clear();
             fileChannel.read(buffer, commitLogOffset + 4);
             return buffer;
         }
@@ -156,6 +157,11 @@ public class DefaultMessageQueueImpl extends MessageQueue {
         public long write(String topic, int queueId, long commitLogOffset) throws IOException {
             // sync write file in (topic + queueId)
 
+            Path dir = Paths.get(Config.getInstance().getConsumerQueueRootDir(), topic);
+            if (!Files.exists(dir)) {
+                Files.createDirectories(dir);
+            }
+
             // get file path by topic and queueId
             Path path = Paths.get(Config.getInstance().getConsumerQueueRootDir(), topic, String.valueOf(queueId));
             FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.APPEND,
@@ -168,6 +174,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             ByteBuffer byteBuffer = ByteBuffer.allocate(ITEM_SIZE);
             byteBuffer.putInt((int) queueOffset);
             byteBuffer.putLong(commitLogOffset);
+            byteBuffer.flip();
             fileChannel.write(byteBuffer);
             fileChannel.force(true);
             return queueOffset;
@@ -175,78 +182,20 @@ public class DefaultMessageQueueImpl extends MessageQueue {
 
         public long findCommitLogOffset(String topic, int queueId, long queueOffset) throws IOException {
             Path path = Paths.get(Config.getInstance().getConsumerQueueRootDir(), topic, String.valueOf(queueId));
-            FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.APPEND,
-                    StandardOpenOption.CREATE);
+            if (!Files.exists(path)) {
+                return -1;
+            }
+            FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.READ);
 
-            long position = ITEM_SIZE * queueOffset - 1;
+            long position = ITEM_SIZE * queueOffset;
 
             ByteBuffer byteBuffer = ByteBuffer.allocate(ITEM_SIZE);
+            byteBuffer.clear();
             int read = fileChannel.read(byteBuffer, position);
             if (read <= 0) {
                 return -1;
             }
             return byteBuffer.getLong(4);
-        }
-    }
-
-    static class FileIO {
-
-        public static final int NUM_BYTES = 8 * 1024;
-
-        private final ConcurrentHashMap<String, Writer> filenameToOutput = new ConcurrentHashMap<>();
-
-        public void write(Path path, String content) throws IOException {
-            String filename = path.toString();
-            Writer outputStream = filenameToOutput.computeIfAbsent(filename,
-                    fn -> {
-                        try {
-                            OutputStreamImpl out = new OutputStreamImpl(
-                                    FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.APPEND,
-                                            StandardOpenOption.CREATE));
-                            return new BufferedWriter(
-                                    new OutputStreamWriter(out, StandardCharsets.ISO_8859_1),
-                                    NUM_BYTES);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                            //Utils.log("failed to create `Writer`, file: %s, ex: %s", fn, e.getMessage());
-                            return null;
-                        }
-                    });
-            if (outputStream == null) {
-                return;
-            }
-            outputStream.write(content);
-        }
-
-        public void flushAllOutputs() throws IOException {
-            for (Writer outputStream : filenameToOutput.values()) {
-                outputStream.flush();
-            }
-        }
-
-        static class OutputStreamImpl extends OutputStream {
-
-            private final FileChannel fileChannel;
-
-            private final ByteBuffer byteBuffer;
-
-            public OutputStreamImpl(FileChannel fileChannel) {
-                this.fileChannel = fileChannel;
-                this.byteBuffer = ByteBuffer.allocateDirect(NUM_BYTES * 2);
-            }
-
-            @Override
-            public void write(int b) throws IOException {
-                throw new UnsupportedEncodingException("should not be called");
-            }
-
-            public void write(byte[] bs, int off, int len) throws IOException {
-                byteBuffer.clear();
-                byteBuffer.put(bs, off, len);
-
-                byteBuffer.flip();
-                fileChannel.write(byteBuffer);
-            }
         }
     }
 }

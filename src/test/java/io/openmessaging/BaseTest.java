@@ -3,9 +3,11 @@ package io.openmessaging;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -21,13 +23,21 @@ class BaseTest {
 
     @BeforeAll
     static void beforeAll() {
-        String testRootDir = "/Users/chenxi20/Downloads/code/chenxi-projects/mq-sample/output";
-        String commitLogFile = testRootDir + "/essd" + "/commitLog";
+        String testRootDir = "/Users/chenxi20/Downloads/code/chenxi-projects/mq-sample/output/essd";
+        String commitLogFile = testRootDir + "/commitLog";
+
         Config.getInstance().setCommitLogFile(commitLogFile);
-        String consumerQueueRootDir = testRootDir + "/essd";
-        Config.getInstance().setConsumerQueueRootDir(consumerQueueRootDir);
+        Config.getInstance().setConsumerQueueRootDir(testRootDir);
         System.out.println("reset commitLogFile: " + commitLogFile);
-        System.out.println("reset consumerQueueRootDir: " + consumerQueueRootDir);
+        System.out.println("reset consumerQueueRootDir: " + testRootDir);
+
+        for (File file : Objects.requireNonNull(new File(testRootDir).listFiles())) {
+            if (file.isFile()) {
+                assertTrue(file.delete());
+            } else {
+                FileUtil.deleteDirectory(file);
+            }
+        }
     }
 
     @Test
@@ -58,11 +68,11 @@ class BaseTest {
         assertAll(
                 () -> {
                     Map<Integer, ByteBuffer> map = mq.getRange("wrong-topic", 10001, 0, 1);
-                    assertTrue(map.isEmpty());
+                    assertTrue(map.isEmpty(), "wrong-topic");
                 },
                 () -> {
                     Map<Integer, ByteBuffer> map = mq.getRange("topic1", 10002, 0, 10);
-                    assertEquals(1, map.size());
+                    assertEquals(1, map.size(), "fetch all msg, t1, q2");
                     assertEquals("content-1-10002_1", toString(map.get(0)));
                 },
                 () -> {
@@ -81,7 +91,8 @@ class BaseTest {
                     assertEquals(2, map.size());
                     assertEquals("content-2-10001_1", toString(map.get(0)));
                     assertEquals("content-2-10001_2", toString(map.get(1)));
-                }
+                },
+                () -> {}
         );
     }
 
