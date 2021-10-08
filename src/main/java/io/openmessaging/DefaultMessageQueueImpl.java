@@ -23,9 +23,21 @@ public class DefaultMessageQueueImpl extends MessageQueue {
 
     public DefaultMessageQueueImpl() {
         this.storeMgr = new StoreMgr();
+        try {
+            init();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public long _append(String topic, int queueId, ByteBuffer data) {
+    private void init() throws IOException {
+        if (!Files.exists(Config.getInstance().getCommitLogPath())) {
+            Files.createFile(Config.getInstance().getCommitLogPath());
+        }
+    }
+
+    @Override
+    public long append(String topic, int queueId, ByteBuffer data) {
         try {
             return storeMgr.write(topic, queueId, data);
         } catch (IOException ioException) {
@@ -33,11 +45,17 @@ public class DefaultMessageQueueImpl extends MessageQueue {
         }
     }
 
-    public Map<Integer, ByteBuffer> _getRange(String topic, int queueId, long startOffset, int fetchNum) {
+    @Override
+    public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long startOffset, int fetchNum) {
         Map<Integer, ByteBuffer> map = new HashMap<>();
         for (int i = 0; i < fetchNum; i++) {
             long offset = startOffset + i;
-            ByteBuffer data = storeMgr.getData(topic, queueId, offset);
+            ByteBuffer data;
+            try {
+                data = storeMgr.getData(topic, queueId, offset);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
             map.put(i, data);
         }
         return map;
@@ -58,37 +76,77 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             // sync write into commitLog
             long commitLogOffset = commitLog.write(topic, queueId, data);
 
-            // async write into consumerQueue
+            // write into consumerQueue
             return consumerQueue.write(topic, queueId, commitLogOffset);
         }
 
-        public ByteBuffer getData(String topic, int queueId, long offset) {
+        public ByteBuffer getData(String topic, int queueId, long offset) throws IOException {
             long commitLogOffset = consumerQueue.findCommitLogOffset(topic, queueId, offset);
+            if (commitLogOffset < 0) {
+                return null;
+            }
             return commitLog.getData(commitLogOffset);
-        }
-    }
-
-    static class CommitLog {
-        public long write(String topic, int queueId, ByteBuffer data) {
-            return 0;
-        }
-
-        public ByteBuffer getData(long commitLogOffset) {
-            // file partition
-            return null;
         }
     }
 
     /**
      * data struct
-     *
+     * <p>
+     * - msgSize
+     * - body
+     * - queueId
+     * - queueOffset
+     * - topic
+     */
+    static class CommitLog {
+
+        /**
+         * @return commitLogOffset
+         */
+        public long write(String topic, int queueId, ByteBuffer data) throws IOException {
+            FileChannel fileChannel = FileChannel.open(Paths.get(Config.getInstance().getCommitLogFile()),
+                    StandardOpenOption.WRITE, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+
+            long commitLogOffset = Files.size(Config.getInstance().getCommitLogPath());
+
+            byte[] topicBytes = topic.getBytes(StandardCharsets.ISO_8859_1);
+
+            int msgSize = data.capacity();
+            ByteBuffer byteBuffer = ByteBuffer.allocate(4 + msgSize + 4 + topicBytes.length);
+            byteBuffer.putInt(msgSize);
+            byteBuffer.put(data);
+            byteBuffer.putInt(queueId);
+            //byteBuffer.put()
+            byteBuffer.put(topicBytes);
+
+            fileChannel.write(byteBuffer);
+            return commitLogOffset;
+        }
+
+        public ByteBuffer getData(long commitLogOffset) throws IOException {
+            // file partition
+
+            FileChannel fileChannel = FileChannel.open(Paths.get(Config.getInstance().getCommitLogFile()),
+                    StandardOpenOption.WRITE, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+
+            ByteBuffer msgSizeBuffer = ByteBuffer.allocate(4);
+            fileChannel.read(msgSizeBuffer, commitLogOffset);
+            int msgSize = msgSizeBuffer.getInt();
+
+            ByteBuffer buffer = ByteBuffer.allocate(msgSize);
+            fileChannel.read(buffer, commitLogOffset + 4);
+            return buffer;
+        }
+    }
+
+    /**
+     * data struct
+     * <p>
      * item is length-fixed:
      * - queueOffset
      * - commitLogOffset
      */
     static class ConsumerQueue {
-
-        public static final String ROOT_DIR = "/essd";
 
         public static final int ITEM_SIZE = 4 + 8;
 
@@ -99,7 +157,7 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             // sync write file in (topic + queueId)
 
             // get file path by topic and queueId
-            Path path = Paths.get(ROOT_DIR, topic, String.valueOf(queueId));
+            Path path = Paths.get(Config.getInstance().getConsumerQueueRootDir(), topic, String.valueOf(queueId));
             FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.APPEND,
                     StandardOpenOption.CREATE);
 
@@ -115,8 +173,19 @@ public class DefaultMessageQueueImpl extends MessageQueue {
             return queueOffset;
         }
 
-        public long findCommitLogOffset(String topic, int queueId, long queueOffset) {
-            return 0;
+        public long findCommitLogOffset(String topic, int queueId, long queueOffset) throws IOException {
+            Path path = Paths.get(Config.getInstance().getConsumerQueueRootDir(), topic, String.valueOf(queueId));
+            FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.APPEND,
+                    StandardOpenOption.CREATE);
+
+            long position = ITEM_SIZE * queueOffset - 1;
+
+            ByteBuffer byteBuffer = ByteBuffer.allocate(ITEM_SIZE);
+            int read = fileChannel.read(byteBuffer, position);
+            if (read <= 0) {
+                return -1;
+            }
+            return byteBuffer.getLong(4);
         }
     }
 
@@ -179,60 +248,5 @@ public class DefaultMessageQueueImpl extends MessageQueue {
                 fileChannel.write(byteBuffer);
             }
         }
-    }
-
-    //----------------------------------------------------
-
-    ConcurrentHashMap<String, Map<Integer, Long>> appendOffset = new ConcurrentHashMap<>();
-    ConcurrentHashMap<String, Map<Integer, Map<Long, ByteBuffer>>> appendData = new ConcurrentHashMap<>();
-
-    // getOrPutDefault 若指定key不存在，则插入defaultValue并返回
-    private <K, V> V getOrPutDefault(Map<K, V> map, K key, V defaultValue) {
-        V retObj = map.get(key);
-        if (retObj != null) {
-            return retObj;
-        }
-        map.put(key, defaultValue);
-        return defaultValue;
-    }
-
-    @Override
-    public long append(String topic, int queueId, ByteBuffer data) {
-        // 获取该 topic-queueId 下的最大位点 offset
-        Map<Integer, Long> topicOffset = getOrPutDefault(appendOffset, topic, new HashMap<>());
-        long offset = topicOffset.getOrDefault(queueId, 0L);
-        // 更新最大位点
-        topicOffset.put(queueId, offset + 1);
-
-        Map<Integer, Map<Long, ByteBuffer>> map1 = getOrPutDefault(appendData, topic, new HashMap<>());
-        Map<Long, ByteBuffer> map2 = getOrPutDefault(map1, queueId, new HashMap<>());
-        // 保存 data 中的数据
-        ByteBuffer buf = ByteBuffer.allocate(data.remaining());
-        buf.put(data);
-        map2.put(offset, buf);
-        return offset;
-    }
-
-    @Override
-    public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum) {
-        Map<Integer, ByteBuffer> ret = new HashMap<>();
-        for (int i = 0; i < fetchNum; i++) {
-            Map<Integer, Map<Long, ByteBuffer>> map1 = appendData.get(topic);
-            if (map1 == null) {
-                break;
-            }
-            Map<Long, ByteBuffer> m2 = map1.get(queueId);
-            if (m2 == null) {
-                break;
-            }
-            ByteBuffer buf = m2.get(offset + i);
-            if (buf != null) {
-                // 返回前确保 ByteBuffer 的 remain 区域为完整答案
-                buf.position(0);
-                buf.limit(buf.capacity());
-                ret.put(i, buf);
-            }
-        }
-        return ret;
     }
 }
