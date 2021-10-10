@@ -1,4 +1,4 @@
-package io.openmessaging;
+package io.openmessaging.store;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -9,14 +9,17 @@ public class Store {
 
     private final CommitLog commitLog;
 
+    private final Checkpoint checkpoint;
+
     private final ConsumeQueueService consumeQueueService;
 
     private final TopicQueueTable topicQueueTable;
 
     private final ReentrantLock writeLock = new ReentrantLock();
 
-    public Store() {
+    public Store() throws IOException {
         this.commitLog = new CommitLog(this);
+        this.checkpoint = new Checkpoint();
         this.consumeQueueService = new ConsumeQueueService(this);
         this.topicQueueTable = new TopicQueueTable();
 
@@ -54,5 +57,9 @@ public class Store {
 
     public TopicQueueTable getTopicQueueTable() {
         return topicQueueTable;
+    }
+
+    public Checkpoint getCheckpoint() {
+        return checkpoint;
     }
 }

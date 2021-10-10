@@ -1,4 +1,7 @@
-package io.openmessaging;
+package io.openmessaging.store;
+
+import io.openmessaging.Config;
+import io.openmessaging.MessageQueue;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -11,8 +14,8 @@ public class DefaultMessageQueueImpl extends MessageQueue {
     private final Store store;
 
     public DefaultMessageQueueImpl() {
-        this.store = new Store();
         try {
+            this.store = new Store();
             init();
         } catch (IOException e) {
             throw new RuntimeException(e);

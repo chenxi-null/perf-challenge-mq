@@ -1,4 +1,6 @@
-package io.openmessaging;
+package io.openmessaging.store;
+
+import io.openmessaging.Config;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -21,17 +23,19 @@ public class CommitLog {
 
     private final Store store;
 
-    public CommitLog(Store store) {
+    private final FileChannel fileChannel;
+
+    public CommitLog(Store store) throws IOException {
         this.store = store;
+        this.fileChannel = FileChannel.open(Paths.get(Config.getInstance().getCommitLogFile()),
+                StandardOpenOption.READ,
+                StandardOpenOption.WRITE, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
     }
 
     /**
      * @return commitLogOffset
      */
     public void write(String topic, int queueId, long queueOffset, ByteBuffer data) throws IOException {
-        FileChannel fileChannel = FileChannel.open(Paths.get(Config.getInstance().getCommitLogFile()),
-                StandardOpenOption.WRITE, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
-
         long commitLogOffset = Files.size(Config.getInstance().getCommitLogPath());
 
         byte[] topicBytes = topic.getBytes(StandardCharsets.ISO_8859_1);
@@ -56,11 +60,6 @@ public class CommitLog {
     }
 
     public ByteBuffer getData(long commitLogOffset) throws IOException {
-        // file partition
-
-        FileChannel fileChannel = FileChannel.open(Paths.get(Config.getInstance().getCommitLogFile()),
-                StandardOpenOption.READ);
-
         ByteBuffer msgSizeBuffer = ByteBuffer.allocate(4);
         msgSizeBuffer.clear();
         fileChannel.read(msgSizeBuffer, commitLogOffset);

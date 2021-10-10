@@ -1,4 +1,4 @@
-package io.openmessaging;
+package io.openmessaging.store;
 
 import java.util.HashMap;
 import java.util.Map;
