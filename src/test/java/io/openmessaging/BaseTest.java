@@ -19,8 +19,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class BaseTest {
 
-    MessageQueue mq;
-
     @BeforeAll
     static void beforeAll() {
         String testRootDir = "/Users/chenxi20/Downloads/code/chenxi-projects/mq-sample/output/essd";
@@ -38,6 +36,7 @@ class BaseTest {
                 FileUtil.deleteDirectory(file);
             }
         }
+        System.out.println("deleted files");
     }
 
     @Test
@@ -72,7 +71,7 @@ class BaseTest {
                 },
                 () -> {
                     Map<Integer, ByteBuffer> map = mq.getRange("topic1", 10002, 0, 10);
-                    assertEquals(1, map.size(), "fetch all msg, t1, q2");
+                    assertEquals(1, map.size(), "fetch all msg, (t1, q2)");
                     assertEquals("content-1-10002_1", toString(map.get(0)));
                 },
                 () -> {

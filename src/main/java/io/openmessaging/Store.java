@@ -2,36 +2,57 @@ package io.openmessaging;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.Executors;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Store {
 
     private final CommitLog commitLog;
 
-    private final ConsumerQueue consumerQueue;
+    private final ConsumeQueueService consumeQueueService;
 
     private final TopicQueueTable topicQueueTable;
 
+    private final ReentrantLock writeLock = new ReentrantLock();
+
     public Store() {
-        this.consumerQueue = new ConsumerQueue(this);
         this.commitLog = new CommitLog(this);
+        this.consumeQueueService = new ConsumeQueueService(this);
         this.topicQueueTable = new TopicQueueTable();
+
+        // asyc write into consumeQueue
+        Executors.newSingleThreadExecutor().submit(consumeQueueService);
     }
 
     public long write(String topic, int queueId, ByteBuffer data) throws IOException {
-        int queueOffset = topicQueueTable.calcNextQueueOffset(topic, queueId);
-
-        // sync write into commitLog
-        long commitLogOffset = commitLog.write(topic, queueId, queueOffset, data);
-
-        // write into consumerQueue
-        return consumerQueue.write(topic, queueId, commitLogOffset);
+        writeLock.lock();
+        try {
+            long queueOffset = topicQueueTable.calcNextQueueOffset(topic, queueId);
+            // sync write into commitLog
+            commitLog.write(topic, queueId, queueOffset, data);
+            return queueOffset;
+        } finally {
+            writeLock.unlock();
+        }
     }
 
     public ByteBuffer getData(String topic, int queueId, long offset) throws IOException {
-        long commitLogOffset = consumerQueue.findCommitLogOffset(topic, queueId, offset);
+        long commitLogOffset = topicQueueTable.getPhyOffset(topic, queueId, offset);
         if (commitLogOffset < 0) {
             return null;
         }
         return commitLog.getData(commitLogOffset);
+    }
+
+    public CommitLog getCommitLog() {
+        return commitLog;
+    }
+
+    public ConsumeQueueService getConsumeQueueService() {
+        return consumeQueueService;
+    }
+
+    public TopicQueueTable getTopicQueueTable() {
+        return topicQueueTable;
     }
 }

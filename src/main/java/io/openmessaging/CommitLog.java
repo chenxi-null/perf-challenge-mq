@@ -28,7 +28,7 @@ public class CommitLog {
     /**
      * @return commitLogOffset
      */
-    public long write(String topic, int queueId, int queueOffset, ByteBuffer data) throws IOException {
+    public void write(String topic, int queueId, long queueOffset, ByteBuffer data) throws IOException {
         FileChannel fileChannel = FileChannel.open(Paths.get(Config.getInstance().getCommitLogFile()),
                 StandardOpenOption.WRITE, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
 
@@ -37,17 +37,22 @@ public class CommitLog {
         byte[] topicBytes = topic.getBytes(StandardCharsets.ISO_8859_1);
 
         int msgSize = data.capacity();
-        ByteBuffer byteBuffer = ByteBuffer.allocate(4 + msgSize + 4 + 4 + topicBytes.length);
+        ByteBuffer byteBuffer = ByteBuffer.allocate(4 + msgSize + 4 + 8 + topicBytes.length);
         byteBuffer.putInt(msgSize);
         byteBuffer.put(data);
         byteBuffer.putInt(queueId);
-        byteBuffer.putInt(queueOffset);
+        byteBuffer.putLong(queueOffset);
         byteBuffer.put(topicBytes);
 
         byteBuffer.flip();
         fileChannel.write(byteBuffer);
         fileChannel.force(true);
-        return commitLogOffset;
+
+        updateTopicQueueTable(topic, queueId, queueOffset, commitLogOffset);
+    }
+
+    private void updateTopicQueueTable(String topic, int queueId, long queueOffset, long commitLogOffset) {
+        store.getTopicQueueTable().put(topic, queueId, queueOffset, commitLogOffset);
     }
 
     public ByteBuffer getData(long commitLogOffset) throws IOException {

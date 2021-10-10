@@ -15,13 +15,13 @@ import java.nio.file.StandardOpenOption;
  * - queueOffset
  * - commitLogOffset
  */
-public class ConsumerQueue {
+public class ConsumeQueue {
 
     public static final int ITEM_SIZE = 4 + 8;
 
     private final Store store;
 
-    public ConsumerQueue(Store store) {
+    public ConsumeQueue(Store store) {
         this.store = store;
     }
 
