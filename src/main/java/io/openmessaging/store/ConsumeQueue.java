@@ -1,7 +1,10 @@
 package io.openmessaging.store;
 
 import io.openmessaging.Config;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -19,7 +22,9 @@ import java.nio.file.StandardOpenOption;
  */
 public class ConsumeQueue {
 
-    public static final int ITEM_SIZE = 4 + 8;
+    private static final Logger log = LoggerFactory.getLogger(ConsumeQueue.class);
+
+    public static final int ITEM_SIZE = 8 + 8;
 
     private final Store store;
 
@@ -27,10 +32,28 @@ public class ConsumeQueue {
         this.store = store;
     }
 
+    public void syncFromCommitLog() throws IOException {
+        long phyOffset = store.getCheckpoint().getPhyOffset();
+        long commitLogWrotePosition = store.getCommitLog().readWrotePosition();
+        log.info("start syncFromCommitLog, phyOffset: {}, commitLogWrotePosition: {}", phyOffset, commitLogWrotePosition);
+        while (phyOffset < commitLogWrotePosition) {
+            CommitLog.TopicQueueOffsetInfo info = store.getCommitLog().getOffset(phyOffset);
+
+            // write into consumeQueue
+            store.getConsumeQueue().write(info.getTopic(), info.getQueueId(), info.getQueueOffset(), phyOffset);
+            log.info("syncFromCommitLog, write a item, {}", info);
+
+            // update checkpoint
+            store.getCheckpoint().updatePhyOffset(info.getNextPhyOffset());
+
+            phyOffset = info.getNextPhyOffset();
+        }
+    }
+
     /**
      * @return queueOffset
      */
-    public long write(String topic, int queueId, long commitLogOffset) throws IOException {
+    public void write(String topic, int queueId, long queueOffset, long commitLogOffset) throws IOException {
         // sync write file in (topic + queueId)
 
         Path dir = Paths.get(Config.getInstance().getConsumerQueueRootDir(), topic);
@@ -44,16 +67,50 @@ public class ConsumeQueue {
                 StandardOpenOption.CREATE);
 
         // calculate queueOffset
-        long queueOffset = Files.size(path) / ITEM_SIZE;
+        //long queueOffset = Files.size(path) / ITEM_SIZE;
 
         // write
         ByteBuffer byteBuffer = ByteBuffer.allocate(ITEM_SIZE);
-        byteBuffer.putInt((int) queueOffset);
+        byteBuffer.putLong(queueOffset);
         byteBuffer.putLong(commitLogOffset);
         byteBuffer.flip();
         fileChannel.write(byteBuffer);
         fileChannel.force(true);
-        return queueOffset;
+    }
+
+    public TopicQueueTable loadTopicQueueTable() throws IOException {
+        TopicQueueTable table = new TopicQueueTable();
+
+        File dir = new File(Config.getInstance().getConsumerQueueRootDir());
+        File[] topicDirs = dir.listFiles();
+        if (topicDirs == null || topicDirs.length == 0) {
+            return table;
+        }
+        for (File topicDir : topicDirs) {
+            String topicName = topicDir.getName();
+            if (!topicDir.isDirectory()) {
+                continue;
+            }
+            File[] queueFiles = topicDir.listFiles();
+            if (queueFiles == null || queueFiles.length == 0) {
+                continue;
+            }
+            for (File queueFile : queueFiles) {
+                int queueId = Integer.parseInt(queueFile.getName());
+                FileChannel fileChannel = FileChannel.open(queueFile.toPath(), StandardOpenOption.READ);
+
+                ByteBuffer byteBuffer = ByteBuffer.allocate(ITEM_SIZE);
+
+                int readBytes;
+                do {
+                    readBytes = fileChannel.read(byteBuffer);
+                    long queueOffset = byteBuffer.getLong();
+                    long phyOffset = byteBuffer.getLong();
+                    table.put(topicName, queueId, queueOffset, phyOffset);
+                } while (readBytes > 0);
+            }
+        }
+        return table;
     }
 
     public long findCommitLogOffset(String topic, int queueId, long queueOffset) throws IOException {

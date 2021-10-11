@@ -11,6 +11,8 @@ public class Store {
 
     private final CommitLog commitLog;
 
+    private final ConsumeQueue consumeQueue;
+
     private final Checkpoint checkpoint;
 
     private final ConsumeQueueService consumeQueueService;
@@ -21,6 +23,7 @@ public class Store {
 
     public Store() throws IOException {
         this.commitLog = new CommitLog(this);
+        this.consumeQueue = new ConsumeQueue(this);
         this.checkpoint = new Checkpoint();
         this.consumeQueueService = new ConsumeQueueService(this);
         this.topicQueueTable = new TopicQueueTable();
@@ -65,5 +68,9 @@ public class Store {
 
     public Checkpoint getCheckpoint() {
         return checkpoint;
+    }
+
+    public ConsumeQueue getConsumeQueue() {
+        return consumeQueue;
     }
 }

@@ -4,6 +4,11 @@ import io.openmessaging.Config;
 import io.openmessaging.DefaultMessageQueueImpl;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 /**
  * @author chenxi20
  * @date 2021/10/11
@@ -11,19 +16,24 @@ import org.junit.jupiter.api.Test;
 class ConsumeQueueDataSyncTest extends BaseTest {
 
     @Test
-    void dataSync() {
+    void dataSync() throws IOException {
         Config.getInstance().setEnableConsumeQueueDataSync(false);
 
         DefaultMessageQueueImpl mq = new DefaultMessageQueueImpl();
         Store store = mq.getStore();
+        ConsumeQueue consumeQueue = store.getConsumeQueue();
+        TopicQueueTable memTable = store.getTopicQueueTable();
 
-        writeTestData(mq);
-        //store.getTopicQueueTable();
+        // given:
+        int msgNum = writeTestData(mq);
+        assertEquals(msgNum, memTable.getMsgNum());
+        assertEquals(0, consumeQueue.loadTopicQueueTable().getMsgNum());
 
-        // invoke data sync
+        // when: invoke data sync
+        store.getConsumeQueue().syncFromCommitLog();
 
-        // read all data from consumeQueue
-        // compare with in-mem topicQueueTable
+        // then: consumeQueue finish data sync
+        assertTrue(memTable.isSame(consumeQueue.loadTopicQueueTable()));
 
         // again write mq
         // again invoke data sync

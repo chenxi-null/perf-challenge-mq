@@ -35,4 +35,19 @@ public class TopicQueueTable {
     public long calcNextQueueOffset(String topic, int queueId) {
         return maxQueueOffsets.getOrDefault(buildKey(topic, queueId), -1L) + 1;
     }
+
+    public long getMsgNum() {
+        long sum = 0;
+        for (Long num : maxQueueOffsets.values()) {
+            if (num != null) {
+                sum += num + 1;
+            }
+        }
+        return sum;
+    }
+
+    // for test
+    public boolean isSame(TopicQueueTable other) {
+        return false;
+    }
 }

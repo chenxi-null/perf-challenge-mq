@@ -12,7 +12,7 @@ import java.io.IOException;
  */
 public class ConsumeQueueService implements Runnable {
 
-    private static final Logger log = LoggerFactory.getLogger(ConsumeQueue.class);
+    private static final Logger log = LoggerFactory.getLogger(ConsumeQueueService.class);
 
     private final Store store;
 
@@ -22,24 +22,15 @@ public class ConsumeQueueService implements Runnable {
 
     @Override
     public void run() {
-        long phyOffset = store.getCheckpoint().getPhyOffset();
-        long commitLogWrotePosition = store.getCommitLog().readWrotePosition();
-        while (phyOffset < commitLogWrotePosition) {
-            try {
-                CommitLog.TopicQueueOffsetInfo info = store.getCommitLog().getOffset(phyOffset);
-
-                // consumeQueue write:
-                //      (info.getTopic(), info.getQueueId(), info.getQueueOffset(), phyOffset);
-
-                // update checkpoint
-                store.getCheckpoint().updatePhyOffset(info.getNextPhyOffset());
-
-                phyOffset = info.getNextPhyOffset();
-
-            } catch (IOException e) {
-                log.error("read commitLog occur error", e);
-                Util.sleep(10_000);
-            }
+        try {
+            store.getConsumeQueue().syncFromCommitLog();
+        } catch (IOException e) {
+            log.error("read commitLog occur error", e);
+            Util.sleep(10_000);
         }
     }
+
+    // data recovery:
+    // 1. data sync from commitLog file to consumeQueue file
+    // 2. load into in-memory topicQueueTable
 }

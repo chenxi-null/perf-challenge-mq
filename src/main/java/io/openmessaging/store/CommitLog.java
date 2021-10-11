@@ -129,6 +129,16 @@ public class CommitLog {
             this.nextPhyOffset = nextPhyOffset;
         }
 
+        @Override
+        public String toString() {
+            return "TopicQueueOffsetInfo{" +
+                    "topic='" + topic + '\'' +
+                    ", queueId=" + queueId +
+                    ", queueOffset=" + queueOffset +
+                    ", nextPhyOffset=" + nextPhyOffset +
+                    '}';
+        }
+
         public String getTopic() {
             return topic;
         }
