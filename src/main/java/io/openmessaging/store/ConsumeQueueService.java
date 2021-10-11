@@ -26,7 +26,11 @@ public class ConsumeQueueService implements Runnable {
         ByteBuffer data = null;
         do {
             try {
-                data = store.getCommitLog().getData(store.getCheckpoint().getPhyOffset());
+                long phyOffset = store.getCheckpoint().getPhyOffset();
+                CommitLog.TopicQueueOffsetInfo offset = store.getCommitLog().getOffset(phyOffset);
+                //offset.queueOffset
+                // return: topic, queueId, queueOffset and nextPhyOffset
+
             } catch (IOException e) {
                 log.error("read commitLog occur error", e);
                 Util.sleep(10_000);
