@@ -5,6 +5,7 @@ import io.openmessaging.Config;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Store {
@@ -26,12 +27,19 @@ public class Store {
         this.consumeQueue = new ConsumeQueue(this);
         this.checkpoint = new Checkpoint();
         this.consumeQueueService = new ConsumeQueueService(this);
-        this.topicQueueTable = new TopicQueueTable();
+
+        this.topicQueueTable = dataRecovery();
 
         // asyc write into consumeQueue
         if (Config.getInstance().isEnableConsumeQueueDataSync()) {
-            Executors.newSingleThreadExecutor().submit(consumeQueueService);
+            Executors.newSingleThreadScheduledExecutor()
+                    .scheduleAtFixedRate(consumeQueueService, 0, 3, TimeUnit.SECONDS);
         }
+    }
+
+    private TopicQueueTable dataRecovery() throws IOException {
+        consumeQueue.syncFromCommitLog();
+        return consumeQueue.loadTopicQueueTable();
     }
 
     public long write(String topic, int queueId, ByteBuffer data) throws IOException {

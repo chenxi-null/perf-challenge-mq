@@ -117,22 +117,4 @@ public class ConsumeQueue {
         }
         return table;
     }
-
-    public long findCommitLogOffset(String topic, int queueId, long queueOffset) throws IOException {
-        Path path = Paths.get(Config.getInstance().getConsumerQueueRootDir(), topic, String.valueOf(queueId));
-        if (!Files.exists(path)) {
-            return -1;
-        }
-        FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.READ);
-
-        long position = ITEM_SIZE * queueOffset;
-
-        ByteBuffer byteBuffer = ByteBuffer.allocate(ITEM_SIZE);
-        byteBuffer.clear();
-        int read = fileChannel.read(byteBuffer, position);
-        if (read <= 0) {
-            return -1;
-        }
-        return byteBuffer.getLong(4);
-    }
 }
