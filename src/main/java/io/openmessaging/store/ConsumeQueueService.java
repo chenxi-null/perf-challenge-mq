@@ -5,7 +5,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 /**
  * @author chenxi20
@@ -23,23 +22,24 @@ public class ConsumeQueueService implements Runnable {
 
     @Override
     public void run() {
-        ByteBuffer data = null;
-        do {
+        long phyOffset = store.getCheckpoint().getPhyOffset();
+        long commitLogWrotePosition = store.getCommitLog().readWrotePosition();
+        while (phyOffset < commitLogWrotePosition) {
             try {
-                long phyOffset = store.getCheckpoint().getPhyOffset();
-
                 CommitLog.TopicQueueOffsetInfo info = store.getCommitLog().getOffset(phyOffset);
 
                 // consumeQueue write:
                 //      (info.getTopic(), info.getQueueId(), info.getQueueOffset(), phyOffset);
 
                 // update checkpoint
-                // return: topic, queueId, queueOffset and nextPhyOffset
+                store.getCheckpoint().updatePhyOffset(info.getNextPhyOffset());
+
+                phyOffset = info.getNextPhyOffset();
 
             } catch (IOException e) {
                 log.error("read commitLog occur error", e);
                 Util.sleep(10_000);
             }
-        } while (data != null);
+        }
     }
 }

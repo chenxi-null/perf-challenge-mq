@@ -9,4 +9,7 @@ public class Checkpoint {
     public long getPhyOffset() {
         return 0;
     }
+
+    public void updatePhyOffset(long nextPhyOffset) {
+    }
 }

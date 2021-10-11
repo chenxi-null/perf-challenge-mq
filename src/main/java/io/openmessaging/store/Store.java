@@ -1,5 +1,7 @@
 package io.openmessaging.store;
 
+import io.openmessaging.Config;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Executors;
@@ -24,7 +26,9 @@ public class Store {
         this.topicQueueTable = new TopicQueueTable();
 
         // asyc write into consumeQueue
-        Executors.newSingleThreadExecutor().submit(consumeQueueService);
+        if (Config.getInstance().isEnableConsumeQueueDataSync()) {
+            Executors.newSingleThreadExecutor().submit(consumeQueueService);
+        }
     }
 
     public long write(String topic, int queueId, ByteBuffer data) throws IOException {

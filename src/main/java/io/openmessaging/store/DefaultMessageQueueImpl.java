@@ -54,4 +54,8 @@ public class DefaultMessageQueueImpl extends MessageQueue {
         }
         return map;
     }
+
+    public Store getStore() {
+        return store;
+    }
 }

@@ -70,6 +70,14 @@ public class CommitLog {
         updateTopicQueueTable(topic, queueId, queueOffset, physicalOffset);
     }
 
+    public long readWrotePosition() {
+        return 0;
+    }
+
+    public void updateWrotePosition(long nextPhysicalOffset) {
+
+    }
+
     private void updateTopicQueueTable(String topic, int queueId, long queueOffset, long physicalOffset) {
         store.getTopicQueueTable().put(topic, queueId, queueOffset, physicalOffset);
     }

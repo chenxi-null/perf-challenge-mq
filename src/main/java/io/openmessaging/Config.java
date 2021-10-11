@@ -17,11 +17,16 @@ public class Config {
 
     private String consumerQueueRootDir = "/essd";
 
-    public static Config getInstance() {
-        return instance;
+    private boolean enableConsumeQueueDataSync = true;
+
+
+    public boolean isEnableConsumeQueueDataSync() {
+        return enableConsumeQueueDataSync;
     }
 
-    private Config() {}
+    public void setEnableConsumeQueueDataSync(boolean enableConsumeQueueDataSync) {
+        this.enableConsumeQueueDataSync = enableConsumeQueueDataSync;
+    }
 
     public String getCommitLogFile() {
         return commitLogFile;
@@ -43,4 +48,12 @@ public class Config {
     public void setConsumerQueueRootDir(String consumerQueueRootDir) {
         this.consumerQueueRootDir = consumerQueueRootDir;
     }
+
+    //----------------------------------------------------
+
+    public static Config getInstance() {
+        return instance;
+    }
+
+    private Config() {}
 }
