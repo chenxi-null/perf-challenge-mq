@@ -1,12 +1,13 @@
 package io.openmessaging.store;
 
 import io.openmessaging.Config;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
@@ -20,6 +21,8 @@ import java.nio.file.StandardOpenOption;
  * - topic
  */
 public class CommitLog {
+
+    private static final Logger log = LoggerFactory.getLogger(CommitLog.class);
 
     private final Store store;
 
@@ -42,7 +45,8 @@ public class CommitLog {
      */
     public void write(String topic, int queueId, long queueOffset, ByteBuffer data) throws IOException {
         // read wrotePosition of commitLog
-        long physicalOffset = Files.size(Config.getInstance().getCommitLogPath());
+        long physicalOffset = readWrotePosition();
+        //long physicalOffset = Files.size(Config.getInstance().getCommitLogPath());
 
         byte[] topicBytes = topic.getBytes(StandardCharsets.ISO_8859_1);
 
@@ -66,16 +70,21 @@ public class CommitLog {
         writeFileChannel.force(true);
 
         // update wrotePosition of commitLog
+        long nextPhysicalOffset = physicalOffset + bufferSize;
+        updateWrotePosition(nextPhysicalOffset);
+        log.info("commitLog wrote, physicalOffset: {}, nextPhysicalOffset: {}", physicalOffset, nextPhysicalOffset);
 
         updateTopicQueueTable(topic, queueId, queueOffset, physicalOffset);
     }
 
+    private long tempMemWrotePosition = 0;
+
     public long readWrotePosition() {
-        return 0;
+        return tempMemWrotePosition;
     }
 
     public void updateWrotePosition(long nextPhysicalOffset) {
-
+        tempMemWrotePosition = nextPhysicalOffset;
     }
 
     private void updateTopicQueueTable(String topic, int queueId, long queueOffset, long physicalOffset) {
@@ -107,6 +116,7 @@ public class CommitLog {
         ByteBuffer buffer = ByteBuffer.allocate(capacity);
         buffer.clear();
         readFileChannel.read(buffer, phyOffset + 4 + 4 + msgSize);
+        buffer.flip();
         int queueId = buffer.getInt();
         long queueOffset = buffer.getLong();
         byte[] topicBytes = new byte[capacity - 4 - 8];

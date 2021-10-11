@@ -38,6 +38,8 @@ public abstract class BaseTest {
         System.out.println("deleted files");
     }
 
+    // topic1: 10001(1, 2, 3), 10002, 10003
+    // topic2: 10001(1, 2)
     int writeTestData(MessageQueue mq) {
         mq.append("topic1", 10001, toByteBuffer("content-1-10001_1"));
 
@@ -50,6 +52,14 @@ public abstract class BaseTest {
 
         mq.append("topic2", 10001, toByteBuffer("content-2-10001_2"));
         return 7;
+    }
+
+    // topic1: 10001(1, 2, 3, 4), 10002, 10003
+    // topic2: 10001(1, 2), 10002
+    int writeTestData2(MessageQueue mq) {
+        mq.append("topic1", 10001, toByteBuffer("content-1-10001_4"));
+        mq.append("topic2", 10002, toByteBuffer("content-1-10002_1"));
+        return 2;
     }
 
     ByteBuffer toByteBuffer(String s) {

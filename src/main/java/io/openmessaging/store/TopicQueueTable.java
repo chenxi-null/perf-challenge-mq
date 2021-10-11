@@ -2,6 +2,7 @@ package io.openmessaging.store;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * @author chenxi20
@@ -48,6 +49,7 @@ public class TopicQueueTable {
 
     // for test
     public boolean isSame(TopicQueueTable other) {
-        return false;
+        return Objects.equals(this.phyOffsets, other.phyOffsets)
+                && Objects.equals(this.maxQueueOffsets, other.maxQueueOffsets);
     }
 }

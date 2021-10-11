@@ -35,8 +35,12 @@ class ConsumeQueueDataSyncTest extends BaseTest {
         // then: consumeQueue finish data sync
         assertTrue(memTable.isSame(consumeQueue.loadTopicQueueTable()));
 
-        // again write mq
-        // again invoke data sync
-        // again assert
+        // when: again write mq
+        int msgNum2 = writeTestData2(mq);
+        assertEquals(msgNum + msgNum2, memTable.getMsgNum());
+        // and: again invoke data sync
+        store.getConsumeQueue().syncFromCommitLog();
+        // and: again assert
+        assertTrue(memTable.isSame(consumeQueue.loadTopicQueueTable()));
     }
 }

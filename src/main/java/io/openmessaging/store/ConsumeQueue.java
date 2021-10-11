@@ -35,13 +35,13 @@ public class ConsumeQueue {
     public void syncFromCommitLog() throws IOException {
         long phyOffset = store.getCheckpoint().getPhyOffset();
         long commitLogWrotePosition = store.getCommitLog().readWrotePosition();
-        log.info("start syncFromCommitLog, phyOffset: {}, commitLogWrotePosition: {}", phyOffset, commitLogWrotePosition);
+        log.info("syncFromCommitLog starting, phyOffset: {}, commitLogWrotePosition: {}", phyOffset, commitLogWrotePosition);
         while (phyOffset < commitLogWrotePosition) {
             CommitLog.TopicQueueOffsetInfo info = store.getCommitLog().getOffset(phyOffset);
 
             // write into consumeQueue
             store.getConsumeQueue().write(info.getTopic(), info.getQueueId(), info.getQueueOffset(), phyOffset);
-            log.info("syncFromCommitLog, write a item, {}", info);
+            log.info("syncFromCommitLog, wrote: {}", info);
 
             // update checkpoint
             store.getCheckpoint().updatePhyOffset(info.getNextPhyOffset());
@@ -50,9 +50,6 @@ public class ConsumeQueue {
         }
     }
 
-    /**
-     * @return queueOffset
-     */
     public void write(String topic, int queueId, long queueOffset, long commitLogOffset) throws IOException {
         // sync write file in (topic + queueId)
 
@@ -101,13 +98,21 @@ public class ConsumeQueue {
 
                 ByteBuffer byteBuffer = ByteBuffer.allocate(ITEM_SIZE);
 
-                int readBytes;
-                do {
-                    readBytes = fileChannel.read(byteBuffer);
+
+                for (int position = 0; ; ) {
+                    byteBuffer.clear();
+                    int readBytes = fileChannel.read(byteBuffer, position);
+                    if (readBytes <= 0) {
+                        break;
+                    }
+                    byteBuffer.flip();
                     long queueOffset = byteBuffer.getLong();
                     long phyOffset = byteBuffer.getLong();
                     table.put(topicName, queueId, queueOffset, phyOffset);
-                } while (readBytes > 0);
+                    log.info("consumeQueue loadTopicQueueTable, put: ({}, {} -> {}, {})",
+                            topicName, queueId, queueOffset, phyOffset);
+                    position += readBytes;
+                }
             }
         }
         return table;
