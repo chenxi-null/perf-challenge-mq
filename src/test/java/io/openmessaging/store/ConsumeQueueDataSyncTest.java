@@ -1,9 +1,8 @@
 package io.openmessaging.store;
 
 import io.openmessaging.Config;
+import io.openmessaging.DefaultMessageQueueImpl;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author chenxi20

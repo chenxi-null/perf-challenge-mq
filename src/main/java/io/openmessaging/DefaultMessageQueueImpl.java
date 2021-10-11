@@ -1,7 +1,6 @@
-package io.openmessaging.store;
+package io.openmessaging;
 
-import io.openmessaging.Config;
-import io.openmessaging.MessageQueue;
+import io.openmessaging.store.Store;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

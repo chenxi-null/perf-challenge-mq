@@ -1,5 +1,6 @@
 package io.openmessaging.store;
 
+import io.openmessaging.DefaultMessageQueueImpl;
 import io.openmessaging.InMemoryImpl;
 import io.openmessaging.MessageQueue;
 import org.junit.jupiter.api.Test;
