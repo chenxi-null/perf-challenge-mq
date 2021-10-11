@@ -23,13 +23,18 @@ public class CommitLog {
 
     private final Store store;
 
-    private final FileChannel fileChannel;
+    private final FileChannel writeFileChannel;
+
+    private final FileChannel readFileChannel;
 
     public CommitLog(Store store) throws IOException {
         this.store = store;
-        this.fileChannel = FileChannel.open(Paths.get(Config.getInstance().getCommitLogFile()),
-                StandardOpenOption.READ,
+
+        this.writeFileChannel = FileChannel.open(Paths.get(Config.getInstance().getCommitLogFile()),
                 StandardOpenOption.WRITE, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+
+        this.readFileChannel = FileChannel.open(Paths.get(Config.getInstance().getCommitLogFile()),
+                StandardOpenOption.READ);
     }
 
     /**
@@ -42,14 +47,13 @@ public class CommitLog {
         byte[] topicBytes = topic.getBytes(StandardCharsets.ISO_8859_1);
 
         int msgSize = data.capacity();
-        int bufferSize =
-                + 4 /* logSize */
+        int bufferSize = 4 /* logSize */
                 + 4 /* msgSize */ + msgSize
                 + 4 /* queueId */
                 + 8 /* queueOffset */
-                + 8 /* physicalOffset */
                 + topicBytes.length;
         ByteBuffer byteBuffer = ByteBuffer.allocate(bufferSize);
+        byteBuffer.putInt(bufferSize);
         byteBuffer.putInt(msgSize);
         byteBuffer.put(data);
         byteBuffer.putInt(queueId);
@@ -58,8 +62,8 @@ public class CommitLog {
         byteBuffer.put(topicBytes);
 
         byteBuffer.flip();
-        fileChannel.write(byteBuffer);
-        fileChannel.force(true);
+        writeFileChannel.write(byteBuffer);
+        writeFileChannel.force(true);
 
         // update wrotePosition of commitLog
 
@@ -75,37 +79,89 @@ public class CommitLog {
 
         ByteBuffer buffer = ByteBuffer.allocate(msgSize);
         buffer.clear();
-        fileChannel.read(buffer, physicalOffset + 4);
+        readFileChannel.read(buffer, physicalOffset + 4 + 4);
         return buffer;
     }
 
+    //+ 4 /* logSize */
+    //+ 4 /* msgSize */ + msgSize
+    //+ 4 /* queueId */
+    //+ 8 /* queueOffset */
+    //+ topicBytes.length;
+
     // return: topic, queueId, queueOffset and nextPhyOffset
     public TopicQueueOffsetInfo getOffset(long phyOffset) throws IOException {
-        int msgSize = readMsgSize(phyOffset);
-        ByteBuffer buffer = ByteBuffer.allocate(8 + 8);
+        SizeInfo sizeInfo = readSize(phyOffset);
+        int logSize = sizeInfo.logSize;
+        int msgSize = sizeInfo.msgSize;
+
+        int capacity = logSize - 4 - 4 - msgSize;
+        ByteBuffer buffer = ByteBuffer.allocate(capacity);
         buffer.clear();
-        fileChannel.read(buffer, phyOffset + 4 + msgSize + 4);
+        readFileChannel.read(buffer, phyOffset + 4 + 4 + msgSize);
+        int queueId = buffer.getInt();
         long queueOffset = buffer.getLong();
-        long nextPhyOffset = buffer.getLong();
-        return new TopicQueueOffsetInfo(queueOffset, nextPhyOffset);
+        byte[] topicBytes = new byte[capacity - 4 - 8];
+        buffer.get(topicBytes);
+        String topic = new String(topicBytes, StandardCharsets.ISO_8859_1);
+        long nextPhyOffset = phyOffset + logSize;
+        return new TopicQueueOffsetInfo(topic, queueId, queueOffset, nextPhyOffset);
     }
 
     public static class TopicQueueOffsetInfo {
+        String topic;
+        int queueId;
         long queueOffset;
         long nextPhyOffset;
 
-        public TopicQueueOffsetInfo(long queueOffset, long nextPhyOffset) {
+        public TopicQueueOffsetInfo(String topic, int queueId, long queueOffset, long nextPhyOffset) {
+            this.topic = topic;
+            this.queueId = queueId;
             this.queueOffset = queueOffset;
             this.nextPhyOffset = nextPhyOffset;
         }
+
+        public String getTopic() {
+            return topic;
+        }
+
+        public int getQueueId() {
+            return queueId;
+        }
+
+        public long getQueueOffset() {
+            return queueOffset;
+        }
+
+        public long getNextPhyOffset() {
+            return nextPhyOffset;
+        }
+    }
+
+    // return: logSize and msgSize
+    private SizeInfo readSize(long physicalOffset) throws IOException {
+        ByteBuffer sizeBuffer = ByteBuffer.allocate(4 + 4);
+        sizeBuffer.clear();
+        readFileChannel.read(sizeBuffer, physicalOffset);
+        sizeBuffer.flip();
+        return new SizeInfo(sizeBuffer.getInt(), sizeBuffer.getInt());
     }
 
     private int readMsgSize(long physicalOffset) throws IOException {
         ByteBuffer msgSizeBuffer = ByteBuffer.allocate(4);
         msgSizeBuffer.clear();
-        fileChannel.read(msgSizeBuffer, physicalOffset);
+        readFileChannel.read(msgSizeBuffer, physicalOffset + 4);
         msgSizeBuffer.flip();
         return msgSizeBuffer.getInt();
     }
-    // get queueOffset and next phyOffset
+
+    static class SizeInfo {
+        int logSize;
+        int msgSize;
+
+        public SizeInfo(int logSize, int msgSize) {
+            this.logSize = logSize;
+            this.msgSize = msgSize;
+        }
+    }
 }

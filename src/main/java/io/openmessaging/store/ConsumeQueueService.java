@@ -27,8 +27,13 @@ public class ConsumeQueueService implements Runnable {
         do {
             try {
                 long phyOffset = store.getCheckpoint().getPhyOffset();
-                CommitLog.TopicQueueOffsetInfo offset = store.getCommitLog().getOffset(phyOffset);
-                //offset.queueOffset
+
+                CommitLog.TopicQueueOffsetInfo info = store.getCommitLog().getOffset(phyOffset);
+
+                // consumeQueue write:
+                //      (info.getTopic(), info.getQueueId(), info.getQueueOffset(), phyOffset);
+
+                // update checkpoint
                 // return: topic, queueId, queueOffset and nextPhyOffset
 
             } catch (IOException e) {
