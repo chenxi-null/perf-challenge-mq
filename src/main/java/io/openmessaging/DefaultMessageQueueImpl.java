@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class DefaultMessageQueueImpl extends MessageQueue {
 
@@ -23,9 +24,12 @@ public class DefaultMessageQueueImpl extends MessageQueue {
         }
     }
 
+    private final AtomicLong capacityStat = new AtomicLong();
+
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
-        log.info("mq append, ({}, {}), size: {}", topic, queueId, data.capacity());
+        long wroteBytes = capacityStat.addAndGet(data.capacity());
+        log.info("mq append, ({}, {}), dataSize: {}, wroteBytes: {}", topic, queueId, data.capacity(), wroteBytes);
         try {
             return store.write(topic, queueId, data);
         } catch (IOException ioException) {
