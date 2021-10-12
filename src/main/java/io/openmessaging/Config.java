@@ -9,8 +9,6 @@ import java.nio.file.Paths;
  */
 public class Config {
 
-    private static final Config instance = new Config();
-
     private String commitLogFile = "/essd/commitlog";;
 
     private Path commitLogPath = Paths.get(commitLogFile);
@@ -19,13 +17,18 @@ public class Config {
 
     private boolean enableConsumeQueueDataSync = true;
 
+    private String checkpointFile = "/essd/checkpoint";
 
-    public boolean isEnableConsumeQueueDataSync() {
-        return enableConsumeQueueDataSync;
+    private Path checkpointPath = Paths.get(checkpointFile);
+
+
+    public void setCheckpointFile(String checkpointFile) {
+        this.checkpointFile = checkpointFile;
+        this.checkpointPath = Paths.get(this.checkpointFile);
     }
 
-    public void setEnableConsumeQueueDataSync(boolean enableConsumeQueueDataSync) {
-        this.enableConsumeQueueDataSync = enableConsumeQueueDataSync;
+    public Path getCheckpointPath() {
+        return checkpointPath;
     }
 
     public String getCommitLogFile() {
@@ -49,7 +52,17 @@ public class Config {
         this.consumerQueueRootDir = consumerQueueRootDir;
     }
 
+    public boolean isEnableConsumeQueueDataSync() {
+        return enableConsumeQueueDataSync;
+    }
+
+    public void setEnableConsumeQueueDataSync(boolean enableConsumeQueueDataSync) {
+        this.enableConsumeQueueDataSync = enableConsumeQueueDataSync;
+    }
+
     //----------------------------------------------------
+
+    private static final Config instance = new Config();
 
     public static Config getInstance() {
         return instance;

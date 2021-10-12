@@ -22,17 +22,20 @@ public abstract class BaseTest {
     static void beforeAll() {
         String testRootDir = "/Users/chenxi20/Downloads/code/chenxi-projects/mq-sample/output/essd";
         String commitLogFile = testRootDir + "/commitLog";
+        String checkPointFile = testRootDir + "/checkpoint";
 
         Config.getInstance().setCommitLogFile(commitLogFile);
         Config.getInstance().setConsumerQueueRootDir(testRootDir);
+        Config.getInstance().setCheckpointFile(checkPointFile);
         System.out.println("reset commitLogFile: " + commitLogFile);
         System.out.println("reset consumerQueueRootDir: " + testRootDir);
+        System.out.println("reset checkPointFile: " + checkPointFile);
 
         for (File file : Objects.requireNonNull(new File(testRootDir).listFiles())) {
             if (file.isFile()) {
-                assertTrue(file.delete());
+                assertTrue(FileUtil.safeDeleteFile(file));
             } else {
-                FileUtil.deleteDirectory(file);
+                assertTrue(FileUtil.safeDeleteDirectory(file));
             }
         }
         System.out.println("deleted files");

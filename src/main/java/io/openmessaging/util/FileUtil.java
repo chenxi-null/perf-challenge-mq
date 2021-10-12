@@ -1,6 +1,9 @@
 package io.openmessaging.util;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * @author chenxi20
@@ -8,21 +11,27 @@ import java.io.File;
  */
 public class FileUtil {
 
+    public static void createFileIfNotExists(Path path) throws IOException {
+        if (!Files.exists(path)) {
+            Files.createFile(path);
+        }
+    }
+
     public static boolean safeDeleteFile(File file) {
-        if (file.getAbsolutePath().contains("-contest-1")) {
+        if (file.getAbsolutePath().contains("mq-sample")) {
             return file.delete();
         }
         return false;
     }
 
-    //public static boolean safeDeleteDirectory(String filepath) {
-    //    if (filepath.contains("-contest-1")) {
-    //        return deleteDirectory(new File(filepath));
-    //    }
-    //    return false;
-    //}
+    public static boolean safeDeleteDirectory(File dir) {
+        if (dir.getAbsolutePath().contains("mq-sample")) {
+            return deleteDirectory(dir);
+        }
+        return false;
+    }
 
-    public static boolean deleteDirectory(File directoryToBeDeleted) {
+    private static boolean deleteDirectory(File directoryToBeDeleted) {
         File[] allContents = directoryToBeDeleted.listFiles();
         if (allContents != null) {
             for (File file : allContents) {

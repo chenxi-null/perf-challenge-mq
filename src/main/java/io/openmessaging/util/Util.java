@@ -6,6 +6,12 @@ package io.openmessaging.util;
  */
 public class Util {
 
+    public static void assertTrue(boolean expr) {
+        if (!expr) {
+            throw new AssertionError();
+        }
+    }
+
     public static void sleep(int millis) {
         try {
             Thread.sleep(1000);
