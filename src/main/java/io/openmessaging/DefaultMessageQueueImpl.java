@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -19,21 +18,14 @@ public class DefaultMessageQueueImpl extends MessageQueue {
     public DefaultMessageQueueImpl() {
         try {
             this.store = new Store();
-            init();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private void init() throws IOException {
-        if (!Files.exists(Config.getInstance().getCommitLogPath())) {
-            Files.createFile(Config.getInstance().getCommitLogPath());
-        }
-    }
-
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
-        log.info("mq append, ({}, {}), size: {}", topic, queueId, data);
+        log.info("mq append, ({}, {}), size: {}", topic, queueId, data.capacity());
         try {
             return store.write(topic, queueId, data);
         } catch (IOException ioException) {

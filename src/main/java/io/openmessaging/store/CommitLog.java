@@ -1,6 +1,8 @@
 package io.openmessaging.store;
 
 import io.openmessaging.Config;
+import io.openmessaging.util.FileUtil;
+import io.openmessaging.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -8,7 +10,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
 /**
@@ -30,23 +32,30 @@ public class CommitLog {
 
     private final FileChannel readFileChannel;
 
+    private final ByteBuffer wrotePositionBuffer;
+
     public CommitLog(Store store) throws IOException {
         this.store = store;
 
-        this.writeFileChannel = FileChannel.open(Paths.get(Config.getInstance().getCommitLogFile()),
-                StandardOpenOption.WRITE, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+        Path commitLogPath = Config.getInstance().getCommitLogPath();
+        FileUtil.createFileIfNotExists(commitLogPath);
 
-        this.readFileChannel = FileChannel.open(Paths.get(Config.getInstance().getCommitLogFile()),
+        this.writeFileChannel = FileChannel.open(commitLogPath,
+                StandardOpenOption.WRITE, StandardOpenOption.APPEND);
+        this.readFileChannel = FileChannel.open(commitLogPath,
                 StandardOpenOption.READ);
+
+        wrotePositionBuffer = ByteBuffer.allocate(8);
+        updateWrotePosition(8);
     }
 
-    /**
-     * @return commitLogOffset
-     */
+    public int getInitWrotePosition() {
+        return 8;
+    }
+
     public void write(String topic, int queueId, long queueOffset, ByteBuffer data) throws IOException {
         // read wrotePosition of commitLog
         long physicalOffset = readWrotePosition();
-        //long physicalOffset = Files.size(Config.getInstance().getCommitLogPath());
 
         byte[] topicBytes = topic.getBytes(StandardCharsets.ISO_8859_1);
 
@@ -62,7 +71,6 @@ public class CommitLog {
         byteBuffer.put(data);
         byteBuffer.putInt(queueId);
         byteBuffer.putLong(queueOffset);
-        //byteBuffer.putLong(physicalOffset + bufferSize);
         byteBuffer.put(topicBytes);
 
         byteBuffer.flip();
@@ -77,14 +85,21 @@ public class CommitLog {
         updateTopicQueueTable(topic, queueId, queueOffset, physicalOffset);
     }
 
-    private long tempMemWrotePosition = 0;
-
-    public long readWrotePosition() {
-        return tempMemWrotePosition;
+    public long readWrotePosition() throws IOException {
+        wrotePositionBuffer.clear();
+        int readBytes = readFileChannel.read(wrotePositionBuffer, 0);
+        Util.assertTrue(readBytes == 8);
+        wrotePositionBuffer.flip();
+        return wrotePositionBuffer.getLong();
     }
 
-    public void updateWrotePosition(long nextPhysicalOffset) {
-        tempMemWrotePosition = nextPhysicalOffset;
+    public void updateWrotePosition(long nextPhyOffset) throws IOException {
+        log.info("commitLog, updateWrotePosition: " + nextPhyOffset);
+        wrotePositionBuffer.clear();
+        wrotePositionBuffer.putLong(nextPhyOffset);
+        wrotePositionBuffer.flip();
+        writeFileChannel.write(wrotePositionBuffer, 0);
+        writeFileChannel.force(true);
     }
 
     private void updateTopicQueueTable(String topic, int queueId, long queueOffset, long physicalOffset) {

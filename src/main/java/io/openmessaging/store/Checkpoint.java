@@ -26,9 +26,12 @@ public class Checkpoint {
 
     private final ByteBuffer byteBuffer;
 
-    public Checkpoint() throws IOException {
-        Path checkpointPath = Config.getInstance().getCheckpointPath();
+    private final Store store;
 
+    public Checkpoint(Store store) throws IOException {
+        this.store = store;
+
+        Path checkpointPath = Config.getInstance().getCheckpointPath();
         FileUtil.createFileIfNotExists(checkpointPath);
 
         this.writeFileChannel = FileChannel.open(checkpointPath,
@@ -40,7 +43,7 @@ public class Checkpoint {
         this.byteBuffer = ByteBuffer.allocate(8);
 
         // init
-        updatePhyOffset(0L);
+        updatePhyOffset(store.getCommitLog().getInitWrotePosition());
     }
 
     public long getPhyOffset() throws IOException {
@@ -56,7 +59,7 @@ public class Checkpoint {
         byteBuffer.clear();
         byteBuffer.putLong(nextPhyOffset);
         byteBuffer.flip();
-        writeFileChannel.write(byteBuffer);
+        writeFileChannel.write(byteBuffer, 0);
         writeFileChannel.force(true);
     }
 }

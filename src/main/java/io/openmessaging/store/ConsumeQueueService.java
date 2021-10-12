@@ -26,11 +26,7 @@ public class ConsumeQueueService implements Runnable {
             store.getConsumeQueue().syncFromCommitLog();
         } catch (IOException e) {
             log.error("read commitLog occur error", e);
-            Util.sleep(10_000);
+            Util.sleep(1_000);
         }
     }
-
-    // data recovery:
-    // 1. data sync from commitLog file to consumeQueue file
-    // 2. load into in-memory topicQueueTable
 }

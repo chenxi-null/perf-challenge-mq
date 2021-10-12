@@ -25,7 +25,7 @@ public class Store {
     public Store() throws IOException {
         this.commitLog = new CommitLog(this);
         this.consumeQueue = new ConsumeQueue(this);
-        this.checkpoint = new Checkpoint();
+        this.checkpoint = new Checkpoint(this);
         this.consumeQueueService = new ConsumeQueueService(this);
 
         this.topicQueueTable = dataRecovery();
@@ -33,7 +33,7 @@ public class Store {
         // asyc write into consumeQueue
         if (Config.getInstance().isEnableConsumeQueueDataSync()) {
             Executors.newSingleThreadScheduledExecutor()
-                    .scheduleAtFixedRate(consumeQueueService, 0, 3, TimeUnit.SECONDS);
+                    .scheduleAtFixedRate(consumeQueueService, 3, 3, TimeUnit.SECONDS);
         }
     }
 
