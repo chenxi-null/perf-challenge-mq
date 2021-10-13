@@ -8,7 +8,9 @@ import org.junit.jupiter.api.BeforeAll;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -20,25 +22,33 @@ public abstract class BaseTest {
 
     @BeforeAll
     static void beforeAll() {
-        String testRootDir = "/Users/chenxi20/Downloads/code/chenxi-projects/mq-sample/output/essd";
-        String commitLogFile = testRootDir + "/commitLog";
-        String checkPointFile = testRootDir + "/checkpoint";
+        String testRootDir = "/Users/chenxi20/Downloads/code/chenxi-projects/mq-sample/output/essd/mqx";
+        Path testRootDirPath = Paths.get(testRootDir);
+        Config.getInstance().setRootDir(testRootDir);
+        System.out.println("reset rootDir");
 
-        Config.getInstance().setCommitLogFile(commitLogFile);
-        Config.getInstance().setConsumerQueueRootDir(testRootDir);
-        Config.getInstance().setCheckpointFile(checkPointFile);
-        System.out.println("reset commitLogFile: " + commitLogFile);
-        System.out.println("reset consumerQueueRootDir: " + testRootDir);
-        System.out.println("reset checkPointFile: " + checkPointFile);
-
-        for (File file : Objects.requireNonNull(new File(testRootDir).listFiles())) {
-            if (file.isFile()) {
-                assertTrue(FileUtil.safeDeleteFile(file));
-            } else {
-                assertTrue(FileUtil.safeDeleteDirectory(file));
-            }
+        if (Files.exists(testRootDirPath)) {
+            assertTrue(FileUtil.safeDeleteDirectory(new File(testRootDir)));
+            System.out.println("deleted dir");
         }
-        System.out.println("deleted files");
+        System.out.println("---- finish file cleanup ---");
+        //if (!Files.exists(testRootDirPath)) {
+        //    System.out.println("testRootDir not exist");
+        //    return;
+        //}
+        //File[] files = new File(testRootDir).listFiles();
+        //if (files == null || files.length == 0) {
+        //    System.out.println("testRootDir has no file");
+        //    return;
+        //}
+        //for (File file : files) {
+        //    if (file.isFile()) {
+        //        assertTrue(FileUtil.safeDeleteFile(file));
+        //    } else {
+        //        assertTrue(FileUtil.safeDeleteDirectory(file));
+        //    }
+        //}
+        //System.out.println("deleted files");
     }
 
     // topic1: 10001(1, 2, 3), 10002, 10003

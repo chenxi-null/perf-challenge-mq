@@ -17,6 +17,12 @@ public class FileUtil {
         }
     }
 
+    public static void createDirIfNotExists(Path path) throws IOException {
+        if (!Files.exists(path)) {
+            Files.createDirectory(path);
+        }
+    }
+
     public static boolean safeDeleteFile(File file) {
         if (file.getAbsolutePath().contains("mq-sample")) {
             return file.delete();

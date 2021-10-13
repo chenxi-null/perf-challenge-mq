@@ -1,6 +1,7 @@
 package io.openmessaging.store;
 
 import io.openmessaging.Config;
+import io.openmessaging.util.FileUtil;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -23,6 +24,8 @@ public class Store {
     private final ReentrantLock writeLock = new ReentrantLock();
 
     public Store() throws IOException {
+        FileUtil.createDirIfNotExists(Config.getInstance().getRootDirPath());
+
         this.commitLog = new CommitLog(this);
         this.consumeQueue = new ConsumeQueue(this);
         this.checkpoint = new Checkpoint(this);

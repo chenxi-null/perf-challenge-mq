@@ -9,35 +9,45 @@ import java.nio.file.Paths;
  */
 public class Config {
 
-    private String commitLogFile = "/essd/commitlog";;
-
-    private Path commitLogPath = Paths.get(commitLogFile);
-
-    private String consumerQueueRootDir = "/essd";
+    private static final String DEFAULT_ROOT_DIR = "/essd/mqx";
 
     private boolean enableConsumeQueueDataSync = true;
 
-    private String checkpointFile = "/essd/checkpoint";
+    private Path rootDirPath;
 
-    private Path checkpointPath = Paths.get(checkpointFile);
+    private Path commitLogPath;
+
+    private String consumerQueueRootDir;
+
+    private Path checkpointPath;
 
 
-    public void setCheckpointFile(String checkpointFile) {
-        this.checkpointFile = checkpointFile;
-        this.checkpointPath = Paths.get(this.checkpointFile);
+    private Config() {
+        setRootDir(DEFAULT_ROOT_DIR);
+    }
+
+    public void setEnableConsumeQueueDataSync(boolean enableConsumeQueueDataSync) {
+        this.enableConsumeQueueDataSync = enableConsumeQueueDataSync;
+    }
+
+    public void setRootDir(String rootDir) {
+        this.rootDirPath = Paths.get(rootDir);
+
+        String commitLogFile = rootDir + "/commitlog";;
+        this.commitLogPath = Paths.get(commitLogFile);
+
+        this.consumerQueueRootDir = rootDir;
+
+        String checkpointFile = rootDir + "/checkpoint";
+        this.checkpointPath = Paths.get(checkpointFile);
+    }
+
+    public Path getRootDirPath() {
+        return rootDirPath;
     }
 
     public Path getCheckpointPath() {
         return checkpointPath;
-    }
-
-    public String getCommitLogFile() {
-        return commitLogFile;
-    }
-
-    public void setCommitLogFile(String commitLogFile) {
-        this.commitLogFile = commitLogFile;
-        this.commitLogPath = Paths.get(this.commitLogFile);
     }
 
     public Path getCommitLogPath() {
@@ -48,16 +58,8 @@ public class Config {
         return consumerQueueRootDir;
     }
 
-    public void setConsumerQueueRootDir(String consumerQueueRootDir) {
-        this.consumerQueueRootDir = consumerQueueRootDir;
-    }
-
     public boolean isEnableConsumeQueueDataSync() {
         return enableConsumeQueueDataSync;
-    }
-
-    public void setEnableConsumeQueueDataSync(boolean enableConsumeQueueDataSync) {
-        this.enableConsumeQueueDataSync = enableConsumeQueueDataSync;
     }
 
     //----------------------------------------------------
@@ -67,6 +69,4 @@ public class Config {
     public static Config getInstance() {
         return instance;
     }
-
-    private Config() {}
 }
