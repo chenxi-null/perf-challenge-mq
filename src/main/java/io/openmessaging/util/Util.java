@@ -1,10 +1,15 @@
 package io.openmessaging.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * @author chenxi20
  * @date 2021/10/10
  */
 public class Util {
+
+    private static final Logger log = LoggerFactory.getLogger(Util.class);
 
     public static void assertTrue(boolean expr) {
         if (!expr) {
@@ -16,8 +21,14 @@ public class Util {
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
-            //noinspection ResultOfMethodCallIgnored
-            Thread.interrupted();
+            //Thread.interrupted();
+            log.error("occur InterruptedException", e);
+        }
+    }
+
+    public static void assertNotNull(Object o) {
+        if (o == null) {
+            throw new NullPointerException("can't be null");
         }
     }
 }

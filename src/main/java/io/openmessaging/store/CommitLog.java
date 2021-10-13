@@ -12,6 +12,12 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * data struct
@@ -52,6 +58,197 @@ public class CommitLog {
     public int getInitWrotePosition() {
         return 8;
     }
+
+    //----------------------------------------------------
+
+    // caller:
+    //      put data and wait by Future
+    //
+    // coordinator:
+    //      - receive data
+    //      - flush disk when satisfied
+    //      - notify caller
+    //
+    // [. . queue . . ] ---> [ .. readyBuffer .. ]
+    //
+
+    // check the 'readyBuffer', the flush condition:
+    //
+    // (1)
+    // if (memBuffer > dataSizeThreshold), then flush
+    //
+    // (2)
+    // start a scheduled task that check in a fixed rate
+    //      if (currentTime - startTime > timeThreshold), then flush
+    //
+    // (3)
+    // if (itemSize > threadSizeThreshold)
+
+    // notify mechanism:
+    //
+
+    public long write(String topic, int queueId, ByteBuffer data) throws InterruptedException {
+        Item item = new Item(topic, queueId, data);
+        blockingQueue.put(item);
+
+        Long queueOffset;
+        try {
+            queueOffset = item.future.get();
+        } catch (InterruptedException e) {
+            throw new IllegalStateException(e);
+        } catch (ExecutionException ee) {
+            throw new IllegalStateException(ee.getCause());
+        }
+        Util.assertNotNull(queueOffset);
+        return queueOffset;
+    }
+
+    static class Item {
+
+        String topic;
+
+        int queueId;
+
+        ByteBuffer data;
+
+        //long queueOffset;
+        // return queueOffset
+        Future<Long> future;
+
+        public Item(String topic, int queueId, ByteBuffer data) {
+            this.topic = topic;
+            this.queueId = queueId;
+            this.data = data;
+
+            // TODO: init future
+        }
+    }
+
+    private void init() {
+        // start tasks ...
+        ReadyBuffer readyBuffer = new ReadyBuffer();
+        BatchWriteTask batchWriteTask = new BatchWriteTask(blockingQueue, readyBuffer);
+
+        TimeWindowCheckTask timeWindowCheckTask = new TimeWindowCheckTask(readyBuffer);
+
+        new Thread(batchWriteTask).start();
+
+        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(
+                timeWindowCheckTask, 500, 10, TimeUnit.MILLISECONDS);
+    }
+
+    private final BlockingQueue<Item> blockingQueue = new LinkedBlockingQueue<>();
+
+    private static class ReadyBuffer {
+
+        public int size() {
+            return 0;
+        }
+
+        public void append(Item item) {
+
+        }
+
+        // lock
+        public void write() {
+            // write
+
+            updateTimeWindowStartTime();
+        }
+
+        public void updateTimeWindowStartTime() {
+
+        }
+
+        public long getTimeWindowStartTime() {
+            return 0;
+        }
+    }
+
+    // fetch data from write-queue and put into readyBuffer
+    // batch write
+    static class BatchWriteTask implements Runnable {
+
+        private final BlockingQueue<Item> blockingQueue;
+
+        private final ReadyBuffer readyBuffer;
+
+        BatchWriteTask(BlockingQueue<Item> blockingQueue, ReadyBuffer readyBuffer) {
+            this.blockingQueue = blockingQueue;
+            this.readyBuffer = readyBuffer;
+        }
+
+        @Override
+        public void run() {
+            //noinspection InfiniteLoopStatement
+            while (true) {
+                Item item;
+                try {
+                    item = blockingQueue.take();
+                } catch (InterruptedException e) {
+                    log.error("InterruptedException", e);
+                    continue;
+                }
+                readyBuffer.append(item);
+                if (readyBuffer.size() >= Config.getInstance().getBatchWriteMemBufferSizeThreshold()) {
+                    readyBuffer.write();
+                }
+            }
+        }
+    }
+
+    // check the wait time of readyBuffer
+    // batch write if timeout
+    static class TimeWindowCheckTask implements Runnable {
+
+        private final ReadyBuffer readyBuffer;
+
+        TimeWindowCheckTask(ReadyBuffer readyBuffer) {
+            this.readyBuffer = readyBuffer;
+        }
+
+        @Override
+        public void run() {
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - readyBuffer.getTimeWindowStartTime()
+                    >= Config.getInstance().getBatchWriteWaitTimeThreshold()) {
+                readyBuffer.write();
+            }
+        }
+    }
+
+    //private List<Item> items;
+    //private long startTime;
+    //private int memBufferSize;
+    //private int MEM_BUFFER_SIZE_THRESHOLD = 4 * 1024;
+    //private int BATCH_WRITE_WAIT_TIME_THRESHOLD = 500;
+    //private int THREAD_SIZE_THRESHOLD = 30;
+    //
+    //public void _write(Item item) {
+    //    items.add(item);
+    //    memBufferSize += item.data.capacity();
+    //    if (memBufferSize >= MEM_BUFFER_SIZE_THRESHOLD) {
+    //        flush();
+    //    }
+    //}
+    //
+    //private void flush() {
+    //}
+    //
+    //private void _timeTask() {
+    //    if (System.currentTimeMillis() - startTime > BATCH_WRITE_WAIT_TIME_THRESHOLD) {
+    //        flush();
+    //    }
+    //}
+
+    //----------------------------------------------------
+
+    /*
+    enhancement:
+    - file partition
+    - MappedByteBuffer
+    - batch write
+     */
 
     public void write(String topic, int queueId, long queueOffset, ByteBuffer data) throws IOException {
         // read wrotePosition of commitLog

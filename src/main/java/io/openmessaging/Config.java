@@ -64,6 +64,38 @@ public class Config {
 
     //----------------------------------------------------
 
+    private int batchWriteMemBufferSizeThreshold = 4 * 1024;
+
+    private int batchWriteWaitTimeThreshold = 500;
+
+    private int batchWriteThreadSizeThreshold = 30;
+
+    public int getBatchWriteMemBufferSizeThreshold() {
+        return batchWriteMemBufferSizeThreshold;
+    }
+
+    public int getBatchWriteWaitTimeThreshold() {
+        return batchWriteWaitTimeThreshold;
+    }
+
+    public int getBatchWriteThreadSizeThreshold() {
+        return batchWriteThreadSizeThreshold;
+    }
+
+    public void setBatchWriteMemBufferSizeThreshold(int batchWriteMemBufferSizeThreshold) {
+        this.batchWriteMemBufferSizeThreshold = batchWriteMemBufferSizeThreshold;
+    }
+
+    public void setBatchWriteWaitTimeThreshold(int batchWriteWaitTimeThreshold) {
+        this.batchWriteWaitTimeThreshold = batchWriteWaitTimeThreshold;
+    }
+
+    public void setBatchWriteThreadSizeThreshold(int batchWriteThreadSizeThreshold) {
+        this.batchWriteThreadSizeThreshold = batchWriteThreadSizeThreshold;
+    }
+
+    //----------------------------------------------------
+
     private static final Config instance = new Config();
 
     public static Config getInstance() {
