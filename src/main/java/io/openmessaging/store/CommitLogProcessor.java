@@ -10,7 +10,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -42,7 +41,7 @@ public class CommitLogProcessor {
     //
     // [. . queue . . ] ---> [ .. readyBuffer .. ]
     //
-
+    //
     // check the 'readyBuffer', the flush condition:
     //
     // (1)
@@ -54,9 +53,9 @@ public class CommitLogProcessor {
     //
     // (3)
     // if (itemSize > threadSizeThreshold)
-
-    // notify mechanism: Future
     //
+    // notify mechanism: Future
+
 
     private static final Logger log = LoggerFactory.getLogger(CommitLogProcessor.class);
 
@@ -70,14 +69,12 @@ public class CommitLogProcessor {
     }
 
     private void init() {
-        // start tasks ...
         ReadyBuffer readyBuffer = new ReadyBuffer(store.getCommitLog());
+
         BatchWriteTask batchWriteTask = new BatchWriteTask(blockingQueue, readyBuffer);
-
-        TimeWindowCheckTask timeWindowCheckTask = new TimeWindowCheckTask(readyBuffer);
-
         new Thread(batchWriteTask).start();
 
+        TimeWindowCheckTask timeWindowCheckTask = new TimeWindowCheckTask(readyBuffer);
         Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(
                 timeWindowCheckTask, 500, 10, TimeUnit.MILLISECONDS);
     }
@@ -90,13 +87,7 @@ public class CommitLogProcessor {
         blockingQueue.put(item);
 
         Long queueOffset;
-        try {
-            queueOffset = item.future.get();
-        } catch (InterruptedException e) {
-            throw new IllegalStateException(e);
-        } catch (ExecutionException ee) {
-            throw new IllegalStateException(ee.getCause());
-        }
+        queueOffset = item.getDoneFuture().get();
         Util.assertNotNull(queueOffset);
         return queueOffset;
     }
@@ -127,15 +118,13 @@ public class CommitLogProcessor {
         // lock
         public void write() throws IOException {
             if (size() > 0) {
-                this.commitLog.write(items);
+                this.commitLog.writeAndNotify(items);
             }
 
             // clear up
             updateTimeWindowStartTime();
             items.clear();
             bufferSize = 0;
-
-            // notify
         }
 
         public void updateTimeWindowStartTime() {

@@ -1,7 +1,8 @@
 package io.openmessaging.store;
 
+import io.openmessaging.common.DoneFuture;
+
 import java.nio.ByteBuffer;
-import java.util.concurrent.Future;
 
 public class Item {
 
@@ -16,14 +17,13 @@ public class Item {
     private long physicalOffset;
 
     // return queueOffset
-    Future<Long> future;
+    private final DoneFuture<Long> doneFuture;
 
     public Item(String topic, int queueId, ByteBuffer data) {
         this.topic = topic;
         this.queueId = queueId;
         this.data = data;
-
-        // TODO: init future
+        this.doneFuture = new DoneFuture<>();
     }
 
     public String getTopic() {
@@ -38,8 +38,8 @@ public class Item {
         return data;
     }
 
-    public Future<Long> getFuture() {
-        return future;
+    public DoneFuture<Long> getDoneFuture() {
+        return doneFuture;
     }
 
     public void setQueueOffset(long queueOffset) {

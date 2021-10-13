@@ -56,7 +56,7 @@ public class CommitLog {
         return 8;
     }
 
-    public void write(List<Item> items) throws IOException {
+    public void writeAndNotify(List<Item> items) throws IOException {
         if (items.isEmpty()) {
             return;
         }
@@ -84,6 +84,8 @@ public class CommitLog {
 
         for (Item item :  items) {
             updateTopicQueueTable(item.getTopic(), item.getQueueId(), item.getQueueOffset(), item.getPhysicalOffset());
+            //notify
+            item.getDoneFuture().done(item.getQueueOffset());
         }
     }
 

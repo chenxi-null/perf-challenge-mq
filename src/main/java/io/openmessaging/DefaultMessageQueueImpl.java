@@ -32,8 +32,8 @@ public class DefaultMessageQueueImpl extends MessageQueue {
         log.info("mq append, ({}, {}), dataSize: {}, wroteBytes: {}", topic, queueId, data.capacity(), wroteBytes);
         try {
             return store.write(topic, queueId, data);
-        } catch (IOException ioException) {
-            throw new RuntimeException(ioException);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
