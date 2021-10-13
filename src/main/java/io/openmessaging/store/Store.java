@@ -21,6 +21,8 @@ public class Store {
 
     private final TopicQueueTable topicQueueTable;
 
+    private final CommitLogProcessor commitLogProcessor;
+
     private final ReentrantLock writeLock = new ReentrantLock();
 
     public Store() throws IOException {
@@ -30,6 +32,8 @@ public class Store {
         this.consumeQueue = new ConsumeQueue(this);
         this.checkpoint = new Checkpoint(this);
         this.consumeQueueService = new ConsumeQueueService(this);
+
+        this.commitLogProcessor = new CommitLogProcessor(this);
 
         this.topicQueueTable = dataRecovery();
 
@@ -45,16 +49,8 @@ public class Store {
         return consumeQueue.loadTopicQueueTable();
     }
 
-    public long write(String topic, int queueId, ByteBuffer data) throws IOException {
-        writeLock.lock();
-        try {
-            long queueOffset = topicQueueTable.calcNextQueueOffset(topic, queueId);
-            // sync write into commitLog
-            commitLog.write(topic, queueId, queueOffset, data);
-            return queueOffset;
-        } finally {
-            writeLock.unlock();
-        }
+    public long write(String topic, int queueId, ByteBuffer data) throws IOException, InterruptedException {
+        return commitLogProcessor.write(topic, queueId, data);
     }
 
     public ByteBuffer getData(String topic, int queueId, long offset) throws IOException {
