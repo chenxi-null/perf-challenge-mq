@@ -1,8 +1,10 @@
 package io.openmessaging.store;
 
 import io.openmessaging.Config;
+import io.openmessaging.DefaultMessageQueueImpl;
 import io.openmessaging.MessageQueue;
 import io.openmessaging.util.FileUtil;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 
 import java.io.File;
@@ -32,23 +34,20 @@ public abstract class BaseTest {
             System.out.println("deleted dir");
         }
         System.out.println("---- finish file cleanup ---");
-        //if (!Files.exists(testRootDirPath)) {
-        //    System.out.println("testRootDir not exist");
-        //    return;
-        //}
-        //File[] files = new File(testRootDir).listFiles();
-        //if (files == null || files.length == 0) {
-        //    System.out.println("testRootDir has no file");
-        //    return;
-        //}
-        //for (File file : files) {
-        //    if (file.isFile()) {
-        //        assertTrue(FileUtil.safeDeleteFile(file));
-        //    } else {
-        //        assertTrue(FileUtil.safeDeleteDirectory(file));
-        //    }
-        //}
-        //System.out.println("deleted files");
+    }
+
+    private DefaultMessageQueueImpl mq;
+
+    void setMQ(DefaultMessageQueueImpl mq) {
+        this.mq = mq;
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (mq != null) {
+            System.out.println("cleanup: mq stop");
+            mq.stop();
+        }
     }
 
     // topic1: 10001(1, 2, 3), 10002, 10003

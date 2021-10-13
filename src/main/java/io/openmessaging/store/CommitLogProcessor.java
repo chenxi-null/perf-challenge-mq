@@ -1,6 +1,7 @@
 package io.openmessaging.store;
 
 import io.openmessaging.Config;
+import io.openmessaging.common.StopWare;
 import io.openmessaging.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,13 +13,14 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
  * @author chenxi20
  * @date 2021/10/13
  */
-public class CommitLogProcessor {
+public class CommitLogProcessor implements StopWare {
 
     //----------------------------------------------------
 
@@ -63,6 +65,9 @@ public class CommitLogProcessor {
 
     private final Store store;
 
+    private final ScheduledExecutorService timeWindowCheckScheduledService =
+            Executors.newSingleThreadScheduledExecutor();
+
     public CommitLogProcessor(Store store) {
         this.store = store;
         init();
@@ -75,8 +80,13 @@ public class CommitLogProcessor {
         new Thread(batchWriteTask).start();
 
         TimeWindowCheckTask timeWindowCheckTask = new TimeWindowCheckTask(readyBuffer);
-        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(
+        timeWindowCheckScheduledService.scheduleAtFixedRate(
                 timeWindowCheckTask, 500, 10, TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public void stop() {
+        timeWindowCheckScheduledService.shutdown();
     }
 
     /**
@@ -138,13 +148,15 @@ public class CommitLogProcessor {
 
     // fetch data from write-queue and put into readyBuffer
     // batch write
-    static class BatchWriteTask implements Runnable {
+    static class BatchWriteTask implements Runnable, StopWare {
 
         private static final Logger log = LoggerFactory.getLogger(BatchWriteTask.class);
 
         private final BlockingQueue<Item> blockingQueue;
 
         private final ReadyBuffer readyBuffer;
+
+        private volatile boolean running = true;
 
         BatchWriteTask(BlockingQueue<Item> blockingQueue, ReadyBuffer readyBuffer) {
             this.blockingQueue = blockingQueue;
@@ -153,8 +165,7 @@ public class CommitLogProcessor {
 
         @Override
         public void run() {
-            //noinspection InfiniteLoopStatement
-            while (true) {
+            while (running) {
                 Item item;
                 try {
                     item = blockingQueue.take();
@@ -171,6 +182,11 @@ public class CommitLogProcessor {
                     }
                 }
             }
+        }
+
+        @Override
+        public void stop() {
+            this.running = false;
         }
     }
 

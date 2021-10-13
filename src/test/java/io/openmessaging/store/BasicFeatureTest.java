@@ -20,7 +20,9 @@ class BasicFeatureTest extends BaseTest {
 
     @Test
     void baseTest() {
-        doBaseTest(new DefaultMessageQueueImpl());
+        DefaultMessageQueueImpl mq = new DefaultMessageQueueImpl();
+        setMQ(mq);
+        doBaseTest(mq);
     }
 
     @Test

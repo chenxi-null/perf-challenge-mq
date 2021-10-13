@@ -20,6 +20,8 @@ class ConsumeQueueDataSyncTest extends BaseTest {
         Config.getInstance().setEnableConsumeQueueDataSync(false);
 
         DefaultMessageQueueImpl mq = new DefaultMessageQueueImpl();
+        setMQ(mq);
+
         Store store = mq.getStore();
         ConsumeQueue consumeQueue = store.getConsumeQueue();
         TopicQueueTable memTable = store.getTopicQueueTable();

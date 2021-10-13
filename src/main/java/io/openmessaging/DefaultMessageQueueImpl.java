@@ -1,5 +1,6 @@
 package io.openmessaging;
 
+import io.openmessaging.common.StopWare;
 import io.openmessaging.store.Store;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,7 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class DefaultMessageQueueImpl extends MessageQueue {
+public class DefaultMessageQueueImpl extends MessageQueue implements StopWare {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultMessageQueueImpl.class);
 
@@ -58,5 +59,10 @@ public class DefaultMessageQueueImpl extends MessageQueue {
 
     public Store getStore() {
         return store;
+    }
+
+    @Override
+    public void stop() {
+        store.stop();
     }
 }

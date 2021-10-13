@@ -1,6 +1,7 @@
 package io.openmessaging.store;
 
 import io.openmessaging.Config;
+import io.openmessaging.common.StopWare;
 import io.openmessaging.util.FileUtil;
 
 import java.io.IOException;
@@ -9,7 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class Store {
+public class Store implements StopWare {
 
     private final CommitLog commitLog;
 
@@ -42,6 +43,11 @@ public class Store {
             Executors.newSingleThreadScheduledExecutor()
                     .scheduleAtFixedRate(consumeQueueService, 3, 3, TimeUnit.SECONDS);
         }
+    }
+
+    @Override
+    public void stop() {
+        this.commitLogProcessor.stop();
     }
 
     private TopicQueueTable dataRecovery() throws IOException {
