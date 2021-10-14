@@ -11,6 +11,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
@@ -68,6 +69,9 @@ public class CommitLogProcessor implements StopWare {
     private final ScheduledExecutorService timeWindowCheckScheduledService =
             Executors.newSingleThreadScheduledExecutor();
 
+    private final ExecutorService batchWriteTaskService = Executors.newSingleThreadExecutor();
+
+
     public CommitLogProcessor(Store store) {
         this.store = store;
         init();
@@ -77,7 +81,7 @@ public class CommitLogProcessor implements StopWare {
         ReadyBuffer readyBuffer = new ReadyBuffer(store.getCommitLog());
 
         BatchWriteTask batchWriteTask = new BatchWriteTask(blockingQueue, readyBuffer);
-        new Thread(batchWriteTask).start();
+        batchWriteTaskService.submit(batchWriteTask);
 
         TimeWindowCheckTask timeWindowCheckTask = new TimeWindowCheckTask(readyBuffer);
         timeWindowCheckScheduledService.scheduleAtFixedRate(
@@ -87,6 +91,18 @@ public class CommitLogProcessor implements StopWare {
     @Override
     public void stop() {
         timeWindowCheckScheduledService.shutdown();
+        batchWriteTaskService.shutdown();
+        try {
+            if (!timeWindowCheckScheduledService.awaitTermination(1, TimeUnit.SECONDS)) {
+                log.warn("failed to stop timeWindowCheckScheduledService");
+            }
+            if (!batchWriteTaskService.awaitTermination(1, TimeUnit.SECONDS)) {
+                log.warn("failed to stop batchWriteTaskService");
+            }
+        } catch (InterruptedException e) {
+            log.error("InterruptedException", e);
+        }
+        log.info("stopped background tasks");
     }
 
     /**

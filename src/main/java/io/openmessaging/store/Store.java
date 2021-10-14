@@ -3,14 +3,18 @@ package io.openmessaging.store;
 import io.openmessaging.Config;
 import io.openmessaging.common.StopWare;
 import io.openmessaging.util.FileUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class Store implements StopWare {
+
+    private static final Logger log = LoggerFactory.getLogger(Store.class);
 
     private final CommitLog commitLog;
 
@@ -24,7 +28,7 @@ public class Store implements StopWare {
 
     private final CommitLogProcessor commitLogProcessor;
 
-    private final ReentrantLock writeLock = new ReentrantLock();
+    private final ScheduledExecutorService consumeQueueSyncScheduledService = Executors.newSingleThreadScheduledExecutor();
 
     public Store() throws IOException {
         FileUtil.createDirIfNotExists(Config.getInstance().getRootDirPath());
@@ -40,7 +44,7 @@ public class Store implements StopWare {
 
         // asyc write into consumeQueue
         if (Config.getInstance().isEnableConsumeQueueDataSync()) {
-            Executors.newSingleThreadScheduledExecutor()
+            consumeQueueSyncScheduledService
                     .scheduleAtFixedRate(consumeQueueService, 3, 3, TimeUnit.SECONDS);
         }
     }
@@ -48,6 +52,15 @@ public class Store implements StopWare {
     @Override
     public void stop() {
         this.commitLogProcessor.stop();
+        consumeQueueSyncScheduledService.shutdown();
+        try {
+            if (!consumeQueueSyncScheduledService.awaitTermination(1, TimeUnit.SECONDS)) {
+                log.warn("failed to stop consumeQueueSyncScheduledService");
+            }
+        } catch (InterruptedException e) {
+            log.error("failed to stop consumeQueueSyncScheduledService", e);
+        }
+        this.consumeQueueService.stop();
     }
 
     private TopicQueueTable dataRecovery() throws IOException {

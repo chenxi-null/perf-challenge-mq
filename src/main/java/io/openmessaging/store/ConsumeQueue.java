@@ -1,6 +1,7 @@
 package io.openmessaging.store;
 
 import io.openmessaging.Config;
+import io.openmessaging.common.StopWare;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +21,7 @@ import java.nio.file.StandardOpenOption;
  * - queueOffset
  * - commitLogOffset
  */
-public class ConsumeQueue {
+public class ConsumeQueue implements StopWare {
 
     private static final Logger log = LoggerFactory.getLogger(ConsumeQueue.class);
 
@@ -50,6 +51,7 @@ public class ConsumeQueue {
         }
     }
 
+    //polish
     public void write(String topic, int queueId, long queueOffset, long commitLogOffset) throws IOException {
         // sync write file in (topic + queueId)
 
@@ -116,5 +118,10 @@ public class ConsumeQueue {
             }
         }
         return table;
+    }
+
+    @Override
+    public void stop() {
+        log.info("stopped");
     }
 }
