@@ -57,12 +57,15 @@ public class CommitLog {
     }
 
     public void writeAndNotify(List<Item> items) throws IOException {
+        log.trace("--1-");
         if (items.isEmpty()) {
             return;
         }
+        log.trace("--2-");
         wroteBuffer.clear();
 
-        long physicalOffset = readWrotePosition();
+        long startPhysicalOffset = readWrotePosition();
+        long physicalOffset = startPhysicalOffset;
         long nextPhysicalOffset = 0;
         for (Item item : items) {
             long queueOffset = store.getTopicQueueTable().calcNextQueueOffset(item.getTopic(), item.getQueueId());
@@ -70,17 +73,18 @@ public class CommitLog {
 
             item.setPhysicalOffset(physicalOffset);
 
-            nextPhysicalOffset = append(wroteBuffer, physicalOffset,
+            nextPhysicalOffset = appendByteBuffer(wroteBuffer, physicalOffset,
                     item.getTopic(), item.getQueueId(), queueOffset, item.getData());
             physicalOffset = nextPhysicalOffset;
         }
+        log.trace("--3-");
 
         wroteBuffer.flip();
         writeFileChannel.write(wroteBuffer);
         writeFileChannel.force(true);
 
         updateWrotePosition(nextPhysicalOffset);
-        log.info("commitLog wrote, physicalOffset: {}, nextPhysicalOffset: {}", physicalOffset, nextPhysicalOffset);
+        log.info("commitLog wrote, physicalOffset: {}, nextPhysicalOffset: {}", startPhysicalOffset, nextPhysicalOffset);
 
         for (Item item :  items) {
             updateTopicQueueTable(item.getTopic(), item.getQueueId(), item.getQueueOffset(), item.getPhysicalOffset());
@@ -92,8 +96,8 @@ public class CommitLog {
     /**
      * @return nextPhysicalOffset
      */
-    public long append(ByteBuffer byteBuffer, long physicalOffset,
-                       String topic, int queueId, long queueOffset, ByteBuffer data) {
+    public long appendByteBuffer(ByteBuffer byteBuffer, long physicalOffset,
+                                 String topic, int queueId, long queueOffset, ByteBuffer data) {
         byte[] topicBytes = topic.getBytes(StandardCharsets.ISO_8859_1);
 
         int msgSize = data.capacity();

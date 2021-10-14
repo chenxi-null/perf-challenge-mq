@@ -1,8 +1,9 @@
 package io.openmessaging.store;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * @author chenxi20
@@ -11,10 +12,16 @@ import java.util.Objects;
 public class TopicQueueTable {
 
     // topic-queueId-queueOffset -> phyOffset
-    private final Map<String, Long> phyOffsets = new HashMap<>();
+    //#track
+    //private final Map<String, Long> phyOffsets = new HashMap<>();
+    private final Map<String, Long> phyOffsets = new ConcurrentHashMap<>();
 
     // topic-queueId -> maxQueueOffset
-    private final Map<String, Long> maxQueueOffsets = new HashMap<>();
+    //#track
+    //private final Map<String, Long> maxQueueOffsets = new HashMap<>();
+    private final Map<String, Long> maxQueueOffsets = new ConcurrentHashMap<>();
+
+    private final ReentrantLock wroteLock = new ReentrantLock();
 
     private String buildKey(String topic, int queueId, long queueOffset) {
         return topic + "_%_" + queueId + "_%_" + queueOffset;
@@ -25,8 +32,13 @@ public class TopicQueueTable {
     }
 
     public void put(String topic, int queueId, long queueOffset, long phyOffset) {
-        maxQueueOffsets.put(buildKey(topic, queueId), queueOffset);
-        phyOffsets.put(buildKey(topic, queueId, queueOffset), phyOffset);
+        wroteLock.lock();
+        try {
+            maxQueueOffsets.put(buildKey(topic, queueId), queueOffset);
+            phyOffsets.put(buildKey(topic, queueId, queueOffset), phyOffset);
+        } finally {
+            wroteLock.unlock();
+        }
     }
 
     public long getPhyOffset(String topic, int queueId, long queueOffset) {

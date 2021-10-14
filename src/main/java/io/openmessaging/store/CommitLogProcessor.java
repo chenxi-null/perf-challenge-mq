@@ -122,9 +122,9 @@ public class CommitLogProcessor implements StopWare {
 
         private final CommitLog commitLog;
 
-        private int bufferSize = 0;
+        private volatile int bufferSize = 0;
 
-        private long timeWindowStartTime = System.currentTimeMillis();
+        private volatile long timeWindowStartTime = System.currentTimeMillis();
 
         private final List<Item> items = new ArrayList<>();
 
@@ -143,7 +143,9 @@ public class CommitLogProcessor implements StopWare {
 
         // lock
         public void write() throws IOException {
+            log.trace("try write");
             if (size() > 0) {
+                log.trace("writing");
                 this.commitLog.writeAndNotify(items);
             }
 
@@ -192,6 +194,7 @@ public class CommitLogProcessor implements StopWare {
                 readyBuffer.append(item);
                 if (readyBuffer.size() >= Config.getInstance().getBatchWriteMemBufferSizeThreshold()) {
                     try {
+                        //todo
                         readyBuffer.write();
                     } catch (Exception e) {
                         log.error("failed to write", e);
@@ -210,6 +213,8 @@ public class CommitLogProcessor implements StopWare {
     // batch write if timeout
     static class TimeWindowCheckTask implements Runnable {
 
+        private static final Logger log = LoggerFactory.getLogger(CommitLog.class);
+
         private final ReadyBuffer readyBuffer;
 
         TimeWindowCheckTask(ReadyBuffer readyBuffer) {
@@ -219,9 +224,11 @@ public class CommitLogProcessor implements StopWare {
         @Override
         public void run() {
             long currentTime = System.currentTimeMillis();
-            if (currentTime - readyBuffer.getTimeWindowStartTime()
-                    >= Config.getInstance().getBatchWriteWaitTimeThreshold()) {
+            long elapsedTime = currentTime - readyBuffer.getTimeWindowStartTime();
+            //log.debug("elapsedTime: {}", elapsedTime);
+            if (elapsedTime >= Config.getInstance().getBatchWriteWaitTimeThreshold()) {
                 try {
+                    //todo
                     readyBuffer.write();
                 } catch (Exception e) {
                     log.error("failed to write", e);
@@ -230,3 +237,4 @@ public class CommitLogProcessor implements StopWare {
         }
     }
 }
+//todo: named thread
