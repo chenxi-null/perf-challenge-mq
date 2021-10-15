@@ -24,6 +24,11 @@ public abstract class BaseTest {
 
     @BeforeAll
     static void beforeAll() {
+        int maxSize = "content-1-10001_1".getBytes().length;
+        int size = "content-1-10001_1".getBytes().length;
+        Config.getInstance().setOneWriteMaxDataSize(maxSize);
+        Config.getInstance().setBatchWriteMemBufferSizeThreshold(size + size);
+
         String testRootDir = "/Users/chenxi20/Downloads/code/chenxi-projects/mq-sample/output/essd/mqx";
         Path testRootDirPath = Paths.get(testRootDir);
         Config.getInstance().setRootDir(testRootDir);

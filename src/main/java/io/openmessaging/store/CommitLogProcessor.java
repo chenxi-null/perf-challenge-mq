@@ -88,7 +88,8 @@ public class CommitLogProcessor implements StopWare {
 
         TimeWindowCheckTask timeWindowCheckTask = new TimeWindowCheckTask(readyBuffer);
         timeWindowCheckScheduledService.scheduleAtFixedRate(
-                timeWindowCheckTask, 500, 10, TimeUnit.MILLISECONDS);
+                timeWindowCheckTask, 500,
+                Config.getInstance().getBatchWriteTimeWindowCheckInternal(), TimeUnit.MILLISECONDS);
     }
 
     @Override

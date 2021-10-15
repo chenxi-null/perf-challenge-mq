@@ -64,11 +64,47 @@ public class Config {
 
     //----------------------------------------------------
 
-    private int batchWriteMemBufferSizeThreshold = 4 * 1024;
+    private int batchWriteTimeWindowCheckInternal = 100;
+
+    public void setBatchWriteTimeWindowCheckInternal(int batchWriteTimeWindowCheckInternal) {
+        this.batchWriteTimeWindowCheckInternal = batchWriteTimeWindowCheckInternal;
+    }
+
+    public int getBatchWriteTimeWindowCheckInternal() {
+        return batchWriteTimeWindowCheckInternal;
+    }
 
     private int batchWriteWaitTimeThreshold = 500;
 
     private int batchWriteThreadSizeThreshold = 30;
+
+    private int oneWriteMaxDataSize = 20 * 1024;
+
+    private int batchWriteMemBufferSizeThreshold = 100 * 1024;
+
+    private int batchWriteCommitLogMaxDataSize = batchWriteMemBufferSizeThreshold + oneWriteMaxDataSize;
+
+    private void updateBatchWriteCommitLogMaxDataSize() {
+        this. batchWriteCommitLogMaxDataSize = batchWriteMemBufferSizeThreshold + oneWriteMaxDataSize;
+    }
+
+    public void setOneWriteMaxDataSize(int oneWriteMaxDataSize) {
+        this.oneWriteMaxDataSize = oneWriteMaxDataSize;
+        updateBatchWriteCommitLogMaxDataSize();
+    }
+
+    public void setBatchWriteMemBufferSizeThreshold(int batchWriteMemBufferSizeThreshold) {
+        this.batchWriteMemBufferSizeThreshold = batchWriteMemBufferSizeThreshold;
+        updateBatchWriteCommitLogMaxDataSize();
+    }
+
+    public int getOneWriteMaxDataSize() {
+        return oneWriteMaxDataSize;
+    }
+
+    public int getBatchWriteCommitLogMaxDataSize() {
+        return batchWriteCommitLogMaxDataSize;
+    }
 
     public int getBatchWriteMemBufferSizeThreshold() {
         return batchWriteMemBufferSizeThreshold;
@@ -80,10 +116,6 @@ public class Config {
 
     public int getBatchWriteThreadSizeThreshold() {
         return batchWriteThreadSizeThreshold;
-    }
-
-    public void setBatchWriteMemBufferSizeThreshold(int batchWriteMemBufferSizeThreshold) {
-        this.batchWriteMemBufferSizeThreshold = batchWriteMemBufferSizeThreshold;
     }
 
     public void setBatchWriteWaitTimeThreshold(int batchWriteWaitTimeThreshold) {

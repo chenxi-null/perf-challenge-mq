@@ -35,7 +35,8 @@ public class CommitLog {
 
     private final ByteBuffer wrotePositionBuffer;
 
-    private final ByteBuffer wroteBuffer = ByteBuffer.allocate(8 * 1024);
+    private final ByteBuffer wroteBuffer =
+            ByteBuffer.allocate(Config.getInstance().getBatchWriteCommitLogMaxDataSize());
 
     public CommitLog(Store store) throws IOException {
         this.store = store;
@@ -57,11 +58,9 @@ public class CommitLog {
     }
 
     public void writeAndNotify(List<Item> items) throws IOException {
-        //log.trace("--1-");
         if (items.isEmpty()) {
             return;
         }
-        //log.trace("--2-");
         wroteBuffer.clear();
 
         long startPhysicalOffset = readWrotePosition();
@@ -77,14 +76,13 @@ public class CommitLog {
                     item.getTopic(), item.getQueueId(), queueOffset, item.getData());
             physicalOffset = nextPhysicalOffset;
         }
-        //log.trace("--3-");
 
         wroteBuffer.flip();
         writeFileChannel.write(wroteBuffer);
         writeFileChannel.force(true);
 
         updateWrotePosition(nextPhysicalOffset);
-        log.info("commitLog wrote, physicalOffset: {}, nextPhysicalOffset: {}", startPhysicalOffset, nextPhysicalOffset);
+        log.info("wrote, physicalOffset: {}, nextPhysicalOffset: {}", startPhysicalOffset, nextPhysicalOffset);
 
         for (Item item :  items) {
             updateTopicQueueTable(item.getTopic(), item.getQueueId(), item.getQueueOffset(), item.getPhysicalOffset());
@@ -125,7 +123,7 @@ public class CommitLog {
     }
 
     public void updateWrotePosition(long nextPhyOffset) throws IOException {
-        log.info("commitLog, updateWrotePosition: " + nextPhyOffset);
+        log.info("updateWrotePosition: " + nextPhyOffset);
         wrotePositionBuffer.clear();
         wrotePositionBuffer.putLong(nextPhyOffset);
         wrotePositionBuffer.flip();
