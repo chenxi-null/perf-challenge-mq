@@ -36,13 +36,13 @@ public class ConsumeQueue implements StopWare {
     public void syncFromCommitLog() throws IOException {
         long phyOffset = store.getCheckpoint().getPhyOffset();
         long commitLogWrotePosition = store.getCommitLog().readWrotePosition();
-        log.info("syncFromCommitLog starting, phyOffset: {}, commitLogWrotePosition: {}", phyOffset, commitLogWrotePosition);
+        log.debug("syncFromCommitLog starting, phyOffset: {}, commitLogWrotePosition: {}", phyOffset, commitLogWrotePosition);
         while (phyOffset < commitLogWrotePosition) {
             CommitLog.TopicQueueOffsetInfo info = store.getCommitLog().getOffset(phyOffset);
 
             // write into consumeQueue
             store.getConsumeQueue().write(info.getTopic(), info.getQueueId(), info.getQueueOffset(), phyOffset);
-            log.info("syncFromCommitLog, wrote: {}", info);
+            log.debug("syncFromCommitLog, wrote: {}", info);
 
             // update checkpoint
             store.getCheckpoint().updatePhyOffset(info.getNextPhyOffset());

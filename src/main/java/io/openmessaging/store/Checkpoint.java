@@ -55,7 +55,7 @@ public class Checkpoint {
     }
 
     public void updatePhyOffset(long nextPhyOffset) throws IOException {
-        log.info("checkpoint, updatePhyOffset: " + nextPhyOffset);
+        log.debug("checkpoint, updatePhyOffset: " + nextPhyOffset);
         byteBuffer.clear();
         byteBuffer.putLong(nextPhyOffset);
         byteBuffer.flip();

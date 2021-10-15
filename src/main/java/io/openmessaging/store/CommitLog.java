@@ -82,7 +82,7 @@ public class CommitLog {
         writeFileChannel.force(true);
 
         updateWrotePosition(nextPhysicalOffset);
-        log.info("wrote, physicalOffset: {}, nextPhysicalOffset: {}", startPhysicalOffset, nextPhysicalOffset);
+        log.debug("wrote, physicalOffset: {}, nextPhysicalOffset: {}", startPhysicalOffset, nextPhysicalOffset);
 
         for (Item item :  items) {
             updateTopicQueueTable(item.getTopic(), item.getQueueId(), item.getQueueOffset(), item.getPhysicalOffset());
@@ -123,7 +123,7 @@ public class CommitLog {
     }
 
     public void updateWrotePosition(long nextPhyOffset) throws IOException {
-        log.info("updateWrotePosition: " + nextPhyOffset);
+        log.debug("updateWrotePosition: " + nextPhyOffset);
         wrotePositionBuffer.clear();
         wrotePositionBuffer.putLong(nextPhyOffset);
         wrotePositionBuffer.flip();
