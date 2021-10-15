@@ -25,6 +25,8 @@ public class DefaultMessageQueueImpl extends MessageQueue implements StopWare {
         }
     }
 
+    private final AtomicLong readNum = new AtomicLong();
+
     private final AtomicLong wroteNum = new AtomicLong();
 
     private final AtomicLong capacityStat = new AtomicLong();
@@ -73,10 +75,10 @@ public class DefaultMessageQueueImpl extends MessageQueue implements StopWare {
         }
         long endTime = System.currentTimeMillis();
         long costTime = endTime - startTime;
-        long wroteNum = this.wroteNum.getAndIncrement();
-        if (wroteNum % 100 == 0) {
+        long readNum = this.readNum.getAndIncrement();
+        if (readNum % 100 == 0) {
             log.info("finish mq getRange, idx = {}, cost = {}, totalCost = {}, ({}, {}), {}, {}",
-                    wroteNum, costTime, queryTimeStats.addAndGet(costTime),
+                    readNum, costTime, queryTimeStats.addAndGet(costTime),
                     topic, queueId, startOffset, fetchNum);
         }
         return map;
