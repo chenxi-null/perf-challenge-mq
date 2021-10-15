@@ -131,7 +131,7 @@ public class CommitLogProcessor implements StopWare {
 
         private final List<Item> items = new ArrayList<>();
 
-        private final ReentrantLock writeLock = new ReentrantLock();
+        private final ReentrantLock lock = new ReentrantLock();
 
         private ReadyBuffer(CommitLog commitLog) {
             this.commitLog = commitLog;
@@ -143,26 +143,33 @@ public class CommitLogProcessor implements StopWare {
 
         // only one thread invoke
         public void append(Item item) {
-            items.add(item);
-            //noinspection NonAtomicOperationOnVolatileField
-            this.bufferSize += item.getData().capacity();
+            lock.lock();
+            try {
+                items.add(item);
+                //noinspection NonAtomicOperationOnVolatileField
+                this.bufferSize += item.getData().capacity();
+            } finally {
+                lock.unlock();
+            }
         }
 
         public void write() throws IOException {
-            writeLock.lock();
+            lock.lock();
             try {
-                //log.trace("try write");
-                if (size() > 0) {
-                    //log.trace("writing");
-                    this.commitLog.writeAndNotify(items);
+                updateTimeWindowStartTime();
+
+                if (size() <= 0) {
+                    log.trace("size = 0");
+                    return;
                 }
 
+                this.commitLog.writeAndNotify(items);
+
                 // clear up
-                updateTimeWindowStartTime();
                 items.clear();
                 bufferSize = 0;
             } finally {
-                writeLock.unlock();
+                lock.unlock();
             }
         }
 
