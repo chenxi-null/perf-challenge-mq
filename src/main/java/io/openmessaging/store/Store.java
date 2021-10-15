@@ -54,7 +54,7 @@ public class Store implements StopWare {
     @Override
     public void stop() {
         this.commitLogProcessor.stop();
-        consumeQueueSyncScheduledService.shutdown();
+        consumeQueueSyncScheduledService.shutdownNow();
         try {
             if (!consumeQueueSyncScheduledService.awaitTermination(1, TimeUnit.SECONDS)) {
                 log.warn("failed to stop consumeQueueSyncScheduledService");

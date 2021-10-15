@@ -17,6 +17,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * @author chenxi20
@@ -73,9 +74,6 @@ public class CommitLogProcessor implements StopWare {
     private final ExecutorService batchWriteTaskService =
             Executors.newSingleThreadExecutor(new NamedThreadFactory("batchWriteTask"));
 
-    //#track
-    private final ExecutorService timeService =
-            Executors.newSingleThreadExecutor(new NamedThreadFactory("track_batchWriteTimeCheckTask"));
 
     public CommitLogProcessor(Store store) {
         this.store = store;
@@ -91,13 +89,12 @@ public class CommitLogProcessor implements StopWare {
         TimeWindowCheckTask timeWindowCheckTask = new TimeWindowCheckTask(readyBuffer);
         timeWindowCheckScheduledService.scheduleAtFixedRate(
                 timeWindowCheckTask, 500, 10, TimeUnit.MILLISECONDS);
-        //timeService.submit(timeWindowCheckTask);
     }
 
     @Override
     public void stop() {
-        timeWindowCheckScheduledService.shutdown();
-        batchWriteTaskService.shutdown();
+        timeWindowCheckScheduledService.shutdownNow();
+        batchWriteTaskService.shutdownNow();
         try {
             if (!timeWindowCheckScheduledService.awaitTermination(1, TimeUnit.SECONDS)) {
                 log.warn("failed to stop timeWindowCheckScheduledService");
@@ -134,6 +131,8 @@ public class CommitLogProcessor implements StopWare {
 
         private final List<Item> items = new ArrayList<>();
 
+        private final ReentrantLock writeLock = new ReentrantLock();
+
         private ReadyBuffer(CommitLog commitLog) {
             this.commitLog = commitLog;
         }
@@ -142,23 +141,29 @@ public class CommitLogProcessor implements StopWare {
             return this.bufferSize;
         }
 
+        // only one thread invoke
         public void append(Item item) {
             items.add(item);
+            //noinspection NonAtomicOperationOnVolatileField
             this.bufferSize += item.getData().capacity();
         }
 
-        // lock
         public void write() throws IOException {
-            //log.trace("try write");
-            if (size() > 0) {
-                //log.trace("writing");
-                this.commitLog.writeAndNotify(items);
-            }
+            writeLock.lock();
+            try {
+                //log.trace("try write");
+                if (size() > 0) {
+                    //log.trace("writing");
+                    this.commitLog.writeAndNotify(items);
+                }
 
-            // clear up
-            updateTimeWindowStartTime();
-            items.clear();
-            bufferSize = 0;
+                // clear up
+                updateTimeWindowStartTime();
+                items.clear();
+                bufferSize = 0;
+            } finally {
+                writeLock.unlock();
+            }
         }
 
         public void updateTimeWindowStartTime() {
@@ -194,13 +199,12 @@ public class CommitLogProcessor implements StopWare {
                 try {
                     item = blockingQueue.take();
                 } catch (InterruptedException e) {
-                    log.error("InterruptedException", e);
-                    continue;
+                    log.info("receive interrupt signal, stop current task");
+                    break;
                 }
                 readyBuffer.append(item);
                 if (readyBuffer.size() >= Config.getInstance().getBatchWriteMemBufferSizeThreshold()) {
                     try {
-                        //todo
                         readyBuffer.write();
                     } catch (Exception e) {
                         log.error("failed to write", e);
@@ -231,13 +235,11 @@ public class CommitLogProcessor implements StopWare {
         public void run() {
             //while (true) {
             try {
-                Util.sleep(10);
                 long currentTime = System.currentTimeMillis();
                 long elapsedTime = currentTime - readyBuffer.getTimeWindowStartTime();
                 //log.debug("elapsedTime: {}", elapsedTime);
                 if (elapsedTime >= Config.getInstance().getBatchWriteWaitTimeThreshold()) {
                     try {
-                        //todo
                         readyBuffer.write();
                     } catch (Exception e) {
                         log.error("failed to write", e);
@@ -249,4 +251,3 @@ public class CommitLogProcessor implements StopWare {
         }
     }
 }
-//todo: named thread
