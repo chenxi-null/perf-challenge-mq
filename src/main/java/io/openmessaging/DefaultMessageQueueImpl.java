@@ -31,10 +31,19 @@ public class DefaultMessageQueueImpl extends MessageQueue implements StopWare {
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
+        long startTime = System.currentTimeMillis();
         long wroteBytes = capacityStat.addAndGet(data.capacity());
         log.info("mq append, ({}, {}), dataSize: {}, wroteBytes: {}", topic, queueId, data.capacity(), wroteBytes);
         try {
-            return store.write(topic, queueId, data);
+            long queueOffset = store.write(topic, queueId, data);
+
+            long endTime = System.currentTimeMillis();
+            long costTime = endTime - startTime;
+            log.info("finish mq append, cost = {}, totalCost = {}, ({}, {}), dataSize: {}, wroteBytes: {}",
+                    costTime, queryTimeStats.addAndGet(costTime),
+                    topic, queueId, data.capacity(), wroteBytes);
+
+            return queueOffset;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -59,9 +68,9 @@ public class DefaultMessageQueueImpl extends MessageQueue implements StopWare {
         }
         long endTime = System.currentTimeMillis();
         long costTime = endTime - startTime;
-        log.info("finish mq getRange, cost = {}, ({}, {}), {}, {}",
-                costTime, topic, queueId, startOffset, fetchNum);
-        queryTimeStats.addAndGet(costTime);
+        log.info("finish mq getRange, cost = {}, totalCost = {}, ({}, {}), {}, {}",
+                costTime, queryTimeStats.addAndGet(costTime),
+                topic, queueId, startOffset, fetchNum);
         return map;
     }
 
