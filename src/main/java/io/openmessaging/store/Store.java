@@ -1,6 +1,7 @@
 package io.openmessaging.store;
 
 import io.openmessaging.Config;
+import io.openmessaging.common.NamedThreadFactory;
 import io.openmessaging.common.StopWare;
 import io.openmessaging.util.FileUtil;
 import org.slf4j.Logger;
@@ -28,7 +29,8 @@ public class Store implements StopWare {
 
     private final CommitLogProcessor commitLogProcessor;
 
-    private final ScheduledExecutorService consumeQueueSyncScheduledService = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService consumeQueueSyncScheduledService =
+            Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("consumeQueueSyncTask"));
 
     public Store() throws IOException {
         FileUtil.createDirIfNotExists(Config.getInstance().getRootDirPath());

@@ -57,11 +57,11 @@ public class CommitLog {
     }
 
     public void writeAndNotify(List<Item> items) throws IOException {
-        log.trace("--1-");
+        //log.trace("--1-");
         if (items.isEmpty()) {
             return;
         }
-        log.trace("--2-");
+        //log.trace("--2-");
         wroteBuffer.clear();
 
         long startPhysicalOffset = readWrotePosition();
@@ -77,7 +77,7 @@ public class CommitLog {
                     item.getTopic(), item.getQueueId(), queueOffset, item.getData());
             physicalOffset = nextPhysicalOffset;
         }
-        log.trace("--3-");
+        //log.trace("--3-");
 
         wroteBuffer.flip();
         writeFileChannel.write(wroteBuffer);

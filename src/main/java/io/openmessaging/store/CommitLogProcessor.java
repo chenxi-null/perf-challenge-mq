@@ -1,6 +1,7 @@
 package io.openmessaging.store;
 
 import io.openmessaging.Config;
+import io.openmessaging.common.NamedThreadFactory;
 import io.openmessaging.common.StopWare;
 import io.openmessaging.util.Util;
 import org.slf4j.Logger;
@@ -67,10 +68,14 @@ public class CommitLogProcessor implements StopWare {
     private final Store store;
 
     private final ScheduledExecutorService timeWindowCheckScheduledService =
-            Executors.newSingleThreadScheduledExecutor();
+            Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("batchWriteTimeCheckTask"));
 
-    private final ExecutorService batchWriteTaskService = Executors.newSingleThreadExecutor();
+    private final ExecutorService batchWriteTaskService =
+            Executors.newSingleThreadExecutor(new NamedThreadFactory("batchWriteTask"));
 
+    //#track
+    private final ExecutorService timeService =
+            Executors.newSingleThreadExecutor(new NamedThreadFactory("track_batchWriteTimeCheckTask"));
 
     public CommitLogProcessor(Store store) {
         this.store = store;
@@ -86,6 +91,7 @@ public class CommitLogProcessor implements StopWare {
         TimeWindowCheckTask timeWindowCheckTask = new TimeWindowCheckTask(readyBuffer);
         timeWindowCheckScheduledService.scheduleAtFixedRate(
                 timeWindowCheckTask, 500, 10, TimeUnit.MILLISECONDS);
+        //timeService.submit(timeWindowCheckTask);
     }
 
     @Override
@@ -143,9 +149,9 @@ public class CommitLogProcessor implements StopWare {
 
         // lock
         public void write() throws IOException {
-            log.trace("try write");
+            //log.trace("try write");
             if (size() > 0) {
-                log.trace("writing");
+                //log.trace("writing");
                 this.commitLog.writeAndNotify(items);
             }
 
@@ -223,16 +229,22 @@ public class CommitLogProcessor implements StopWare {
 
         @Override
         public void run() {
-            long currentTime = System.currentTimeMillis();
-            long elapsedTime = currentTime - readyBuffer.getTimeWindowStartTime();
-            //log.debug("elapsedTime: {}", elapsedTime);
-            if (elapsedTime >= Config.getInstance().getBatchWriteWaitTimeThreshold()) {
-                try {
-                    //todo
-                    readyBuffer.write();
-                } catch (Exception e) {
-                    log.error("failed to write", e);
+            //while (true) {
+            try {
+                Util.sleep(10);
+                long currentTime = System.currentTimeMillis();
+                long elapsedTime = currentTime - readyBuffer.getTimeWindowStartTime();
+                //log.debug("elapsedTime: {}", elapsedTime);
+                if (elapsedTime >= Config.getInstance().getBatchWriteWaitTimeThreshold()) {
+                    try {
+                        //todo
+                        readyBuffer.write();
+                    } catch (Exception e) {
+                        log.error("failed to write", e);
+                    }
                 }
+            } catch (Throwable e) {
+                log.error("failed to --->", e);
             }
         }
     }
