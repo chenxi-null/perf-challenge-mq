@@ -27,6 +27,8 @@ public class DefaultMessageQueueImpl extends MessageQueue implements StopWare {
 
     private final AtomicLong capacityStat = new AtomicLong();
 
+    private final AtomicLong queryTimeStats = new AtomicLong();
+
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
         long wroteBytes = capacityStat.addAndGet(data.capacity());
@@ -40,6 +42,7 @@ public class DefaultMessageQueueImpl extends MessageQueue implements StopWare {
 
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long startOffset, int fetchNum) {
+        long startTime = System.currentTimeMillis();
         log.info("mq getRange, ({}, {}), {}, {}", topic, queueId, startOffset, fetchNum);
         Map<Integer, ByteBuffer> map = new HashMap<>();
         for (int i = 0; i < fetchNum; i++) {
@@ -54,6 +57,11 @@ public class DefaultMessageQueueImpl extends MessageQueue implements StopWare {
                 map.put(i, data);
             }
         }
+        long endTime = System.currentTimeMillis();
+        long costTime = endTime - startTime;
+        log.info("finish mq getRange, cost = {}, ({}, {}), {}, {}",
+                costTime, topic, queueId, startOffset, fetchNum);
+        queryTimeStats.addAndGet(costTime);
         return map;
     }
 
