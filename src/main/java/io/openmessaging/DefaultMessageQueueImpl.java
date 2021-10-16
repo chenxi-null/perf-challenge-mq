@@ -29,14 +29,14 @@ public class DefaultMessageQueueImpl extends MessageQueue implements StopWare {
 
     private final AtomicLong wroteNum = new AtomicLong();
 
-    private final AtomicLong capacityStat = new AtomicLong();
+    private final AtomicLong wroteDataSizeStat = new AtomicLong();
 
     private final AtomicLong queryTimeStats = new AtomicLong();
 
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
         long startTime = System.currentTimeMillis();
-        long wroteBytes = capacityStat.addAndGet(data.capacity());
+        long wroteBytes = wroteDataSizeStat.addAndGet(data.capacity());
         //log.info("mq append, ({}, {}), dataSize: {}, wroteBytes: {}", topic, queueId, data.capacity(), wroteBytes);
         try {
             long queueOffset = store.write(topic, queueId, data);
@@ -45,9 +45,9 @@ public class DefaultMessageQueueImpl extends MessageQueue implements StopWare {
             long costTime = endTime - startTime;
             long wroteNum = this.wroteNum.getAndIncrement();
             if (wroteNum % 100 == 0) {
-                log.info("finish mq append, idx = {}, cost = {}, totalCost = {}, ({}, {}), dataSize: {}, wroteBytes: {}",
-                        wroteNum, costTime, queryTimeStats.addAndGet(costTime),
-                        topic, queueId, data.capacity(), wroteBytes);
+                log.info("finish mq append, idx = {}, cost = {}, ({}, {}), dataSize: {}, wroteBytes: {}",
+                        wroteNum, costTime,
+                        topic, queueId, data.limit(), wroteBytes);
             }
 
             return queueOffset;
