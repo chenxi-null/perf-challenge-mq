@@ -96,6 +96,9 @@ public class ConsumeQueue implements StopWare {
                 return null;
             }
         });
+        if (fileChannel == null) {
+            throw new IllegalStateException("failed to create file-channel");
+        }
 
         // write
         wroteBuffer.clear();
@@ -104,8 +107,6 @@ public class ConsumeQueue implements StopWare {
         wroteBuffer.flip();
         fileChannel.write(wroteBuffer);
         fileChannel.force(true);
-
-        //fileChannel.close();
     }
 
     //----------------------------------------------------
