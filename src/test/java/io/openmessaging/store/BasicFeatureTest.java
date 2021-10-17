@@ -11,6 +11,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author chenxi20
@@ -36,13 +37,18 @@ class BasicFeatureTest extends BaseTest {
 
         writeTestData(mq);
 
-        // topic1: 10001(1, 2, 3), 10002, 10003
-        // topic2: 10001, 10002
+        /*
+        topic1: 10001(1, 2, 3), 10002(1), 10003(1)
+        topic2: 10001(1), 10002(1)
+        //diff msg size
+        topic3: 12345(1)
+        topic4: 23456(1)
+         */
         assertAll(
-                //() -> {
-                //    Map<Integer, ByteBuffer> map = mq.getRange("wrong-topic", 10001, 0, 1);
-                //    assertTrue(map.isEmpty(), "wrong-topic");
-                //},
+                () -> {
+                    Map<Integer, ByteBuffer> map = mq.getRange("wrong-topic", 10001, 0, 1);
+                    assertTrue(map.isEmpty(), "wrong-topic");
+                },
                 () -> {
                     Map<Integer, ByteBuffer> map = mq.getRange("topic1", 10002, 0, 10);
                     assertEquals(1, map.size(), "fetch all msg, (t1, q2)");

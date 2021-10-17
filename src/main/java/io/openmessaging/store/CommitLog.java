@@ -107,7 +107,7 @@ public class CommitLog {
                                  String topic, int queueId, long queueOffset, ByteBuffer data) {
         byte[] topicBytes = topic.getBytes(StandardCharsets.ISO_8859_1);
 
-        int msgSize = data.capacity();
+        int msgSize = data.remaining();
         int bufferSize = logSizeBytesNum /* logSize */
                 + msgSizeBytesNum /* msgSize */
                 + msgSize /* data */

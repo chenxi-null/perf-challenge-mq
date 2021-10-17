@@ -22,11 +22,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public abstract class BaseTest {
 
+    public static int maxMsgSize = 100;
+
     @BeforeAll
     static void beforeAll() {
-        int maxSize = "content-1-10001_1".getBytes().length;
         int size = "content-1-10001_1".getBytes().length;
-        Config.getInstance().setOneWriteMaxDataSize(maxSize);
+        Config.getInstance().setOneWriteMaxDataSize(maxMsgSize);
         Config.getInstance().setBatchWriteMemBufferSizeThreshold(size + size);
 
         String testRootDir = "/Users/chenxi20/Downloads/code/chenxi-projects/mq-sample/output/essd/mqx";
@@ -55,8 +56,13 @@ public abstract class BaseTest {
         }
     }
 
-    // topic1: 10001(1, 2, 3), 10002, 10003
-    // topic2: 10001(1, 2)
+    /*
+    topic1: 10001(1, 2, 3), 10002(1), 10003(1)
+    topic2: 10001(1), 10002(1)
+    //diff msg size
+    topic3: 12345(1)
+    topic4: 23456(1)
+     */
     int writeTestData(MessageQueue mq) {
         mq.append("topic1", 10001, toByteBuffer("content-1-10001_1"));
 
@@ -68,7 +74,11 @@ public abstract class BaseTest {
         mq.append("topic1", 10001, toByteBuffer("content-1-10001_3"));
 
         mq.append("topic2", 10001, toByteBuffer("content-2-10001_2"));
-        return 7;
+
+        mq.append("topic3", 12345, toByteBuffer("content-3-12345_*****"));
+
+        mq.append("topic4", 23456, toByteBuffer("content-4-23456"));
+        return 7 + 2;
     }
 
     // topic1: 10001(1, 2, 3, 4), 10002, 10003
@@ -79,8 +89,14 @@ public abstract class BaseTest {
         return 2;
     }
 
+    private final ByteBuffer wroteByteBuffer = ByteBuffer.allocate(maxMsgSize);
+
     ByteBuffer toByteBuffer(String s) {
-        return ByteBuffer.wrap(s.getBytes(StandardCharsets.ISO_8859_1));
+        wroteByteBuffer.clear();
+        wroteByteBuffer.put(s.getBytes(StandardCharsets.ISO_8859_1));
+        // invoke flip before write
+        wroteByteBuffer.flip();
+        return wroteByteBuffer;
     }
 
     String toString(ByteBuffer buffer) {

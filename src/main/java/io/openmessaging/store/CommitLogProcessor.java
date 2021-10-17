@@ -148,7 +148,7 @@ public class CommitLogProcessor implements StopWare {
             try {
                 items.add(item);
                 //noinspection NonAtomicOperationOnVolatileField
-                this.bufferSize += item.getData().capacity();
+                this.bufferSize += item.getData().limit(); // data.remaining();
             } finally {
                 lock.unlock();
             }

@@ -37,14 +37,13 @@ public class DefaultMessageQueueImpl extends MessageQueue implements StopWare {
     @Override
     public long append(String topic, int queueId, ByteBuffer data) {
         long startTime = System.currentTimeMillis();
-        //log.info("mq append, ({}, {}), dataSize: {}, wroteBytes: {}", topic, queueId, data.capacity(), wroteBytes);
         try {
             long queueOffset = store.write(topic, queueId, data);
 
             long endTime = System.currentTimeMillis();
             long costTime = endTime - startTime;
             long wroteNum = this.wroteNum.getAndIncrement();
-            int dataSize = data.limit();
+            int dataSize = data.limit(); // or data.remaining();
             long wroteBytes = wroteDataSizeStat.addAndGet(dataSize);
             if (wroteNum % 100 == 0) {
                 log.info("finish mq append, idx = {}, cost = {}, ({}, {}), dataSize: {}, wroteBytes: {}",
