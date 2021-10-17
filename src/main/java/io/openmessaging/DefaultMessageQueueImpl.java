@@ -56,12 +56,15 @@ public class DefaultMessageQueueImpl extends MessageQueue implements StopWare {
         }
     }
 
+    public static final ThreadLocal<Integer> queryIdxContext = new ThreadLocal<>();
+
     @Override
     public Map<Integer, ByteBuffer> getRange(String topic, int queueId, long startOffset, int fetchNum) {
         long startTime = System.currentTimeMillis();
         //log.info("mq getRange, ({}, {}), {}, {}", topic, queueId, startOffset, fetchNum);
         Map<Integer, ByteBuffer> map = new HashMap<>();
         for (int i = 0; i < fetchNum; i++) {
+            queryIdxContext.set(i);
             long offset = startOffset + i;
             ByteBuffer data;
             try {

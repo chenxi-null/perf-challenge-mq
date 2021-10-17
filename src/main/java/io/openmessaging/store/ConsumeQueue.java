@@ -29,16 +29,27 @@ public class ConsumeQueue implements StopWare {
 
     private final Store store;
 
+    private final ByteBuffer prefixSizeBuffer;
+
+    private final ByteBuffer suffixBuffer;
+
+    private final byte[] suffixBytes;
+
     public ConsumeQueue(Store store) {
         this.store = store;
+        this.prefixSizeBuffer = ByteBuffer.allocateDirect(4 + 4);
+        this.suffixBuffer = ByteBuffer.allocateDirect(120);
+        this.suffixBytes = new byte[100];
     }
 
+    // sync invoke
     public void syncFromCommitLog() throws IOException {
         long phyOffset = store.getCheckpoint().getPhyOffset();
         long commitLogWrotePosition = store.getCommitLog().readWrotePosition();
         log.debug("syncFromCommitLog starting, phyOffset: {}, commitLogWrotePosition: {}", phyOffset, commitLogWrotePosition);
         while (phyOffset < commitLogWrotePosition) {
-            CommitLog.TopicQueueOffsetInfo info = store.getCommitLog().getOffset(phyOffset);
+            CommitLog.TopicQueueOffsetInfo info = store.getCommitLog().getOffset(phyOffset,
+                    prefixSizeBuffer, suffixBuffer, suffixBytes);
 
             // write into consumeQueue
             store.getConsumeQueue().write(info.getTopic(), info.getQueueId(), info.getQueueOffset(), phyOffset);
@@ -50,6 +61,8 @@ public class ConsumeQueue implements StopWare {
             phyOffset = info.getNextPhyOffset();
         }
     }
+
+    private final ByteBuffer wroteBuffer = ByteBuffer.allocateDirect(ITEM_SIZE);
 
     //polish
     public void write(String topic, int queueId, long queueOffset, long commitLogOffset) throws IOException {
@@ -65,17 +78,18 @@ public class ConsumeQueue implements StopWare {
         FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.APPEND,
                 StandardOpenOption.CREATE);
 
-        // calculate queueOffset
-        //long queueOffset = Files.size(path) / ITEM_SIZE;
-
         // write
-        ByteBuffer byteBuffer = ByteBuffer.allocate(ITEM_SIZE);
-        byteBuffer.putLong(queueOffset);
-        byteBuffer.putLong(commitLogOffset);
-        byteBuffer.flip();
-        fileChannel.write(byteBuffer);
+        wroteBuffer.clear();
+        wroteBuffer.putLong(queueOffset);
+        wroteBuffer.putLong(commitLogOffset);
+        wroteBuffer.flip();
+        fileChannel.write(wroteBuffer);
         fileChannel.force(true);
     }
+
+    //----------------------------------------------------
+
+    private final ByteBuffer loadMemBuffer = ByteBuffer.allocateDirect(ITEM_SIZE);
 
     public TopicQueueTable loadTopicQueueTable() throws IOException {
         TopicQueueTable table = new TopicQueueTable();
@@ -98,8 +112,7 @@ public class ConsumeQueue implements StopWare {
                 int queueId = Integer.parseInt(queueFile.getName());
                 FileChannel fileChannel = FileChannel.open(queueFile.toPath(), StandardOpenOption.READ);
 
-                ByteBuffer byteBuffer = ByteBuffer.allocate(ITEM_SIZE);
-
+                ByteBuffer byteBuffer = loadMemBuffer;
 
                 for (int position = 0; ; ) {
                     byteBuffer.clear();

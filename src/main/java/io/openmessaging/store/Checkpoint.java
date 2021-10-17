@@ -40,7 +40,7 @@ public class Checkpoint {
         this.readFileChannel = FileChannel.open(checkpointPath,
                 StandardOpenOption.READ);
 
-        this.byteBuffer = ByteBuffer.allocate(8);
+        this.byteBuffer = ByteBuffer.allocateDirect(8);
 
         // init
         updatePhyOffset(store.getCommitLog().getInitWrotePosition());

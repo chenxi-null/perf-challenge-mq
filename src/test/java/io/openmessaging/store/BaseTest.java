@@ -50,7 +50,7 @@ public abstract class BaseTest {
     @AfterEach
     void tearDown() {
         if (mq != null) {
-            System.out.println("cleanup: mq stop");
+            System.out.println("--- cleanup: mq stop ---");
             mq.stop();
         }
     }
@@ -87,8 +87,8 @@ public abstract class BaseTest {
         if (buffer == null) {
             return null;
         }
-        byte[] bytes = new byte[buffer.capacity()];
-        buffer.rewind();
+        byte[] bytes = new byte[buffer.limit()];
+        buffer.flip();
         buffer.get(bytes);
         return new String(bytes, StandardCharsets.ISO_8859_1);
     }

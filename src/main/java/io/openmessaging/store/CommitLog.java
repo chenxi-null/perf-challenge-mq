@@ -1,6 +1,7 @@
 package io.openmessaging.store;
 
 import io.openmessaging.Config;
+import io.openmessaging.DefaultMessageQueueImpl;
 import io.openmessaging.util.FileUtil;
 import io.openmessaging.util.Util;
 import org.slf4j.Logger;
@@ -13,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * data struct
@@ -36,7 +38,7 @@ public class CommitLog {
     private final ByteBuffer wrotePositionBuffer;
 
     private final ByteBuffer wroteBuffer =
-            ByteBuffer.allocate(Config.getInstance().getBatchWriteCommitLogMaxDataSize());
+            ByteBuffer.allocateDirect(Config.getInstance().getBatchWriteCommitLogMaxDataSize());
 
     public CommitLog(Store store) throws IOException {
         this.store = store;
@@ -49,7 +51,7 @@ public class CommitLog {
         this.readFileChannel = FileChannel.open(commitLogPath,
                 StandardOpenOption.READ);
 
-        wrotePositionBuffer = ByteBuffer.allocate(8);
+        wrotePositionBuffer = ByteBuffer.allocateDirect(8);
         updateWrotePosition(8);
     }
 
@@ -84,12 +86,19 @@ public class CommitLog {
         updateWrotePosition(nextPhysicalOffset);
         log.debug("wrote, physicalOffset: {}, nextPhysicalOffset: {}", startPhysicalOffset, nextPhysicalOffset);
 
-        for (Item item :  items) {
+        for (Item item : items) {
             updateTopicQueueTable(item.getTopic(), item.getQueueId(), item.getQueueOffset(), item.getPhysicalOffset());
             //notify
             item.getDoneFuture().done(item.getQueueOffset());
         }
     }
+
+    //----------------------------------------------------
+
+    // TODO:
+    private static final int logSizeBytesNum = 4;
+
+    private static final int msgSizeBytesNum = 4;
 
     /**
      * @return nextPhysicalOffset
@@ -99,8 +108,9 @@ public class CommitLog {
         byte[] topicBytes = topic.getBytes(StandardCharsets.ISO_8859_1);
 
         int msgSize = data.capacity();
-        int bufferSize = 4 /* logSize */
-                + 4 /* msgSize */ + msgSize
+        int bufferSize = logSizeBytesNum /* logSize */
+                + msgSizeBytesNum /* msgSize */
+                + msgSize /* data */
                 + 4 /* queueId */
                 + 8 /* queueOffset */
                 + topicBytes.length;
@@ -138,8 +148,9 @@ public class CommitLog {
     public ByteBuffer getData(long physicalOffset) throws IOException {
         int msgSize = readMsgSize(physicalOffset);
 
-        ByteBuffer buffer = ByteBuffer.allocate(msgSize);
+        ByteBuffer buffer = bufferContext.get().getMsgDataBuffer();
         buffer.clear();
+        buffer.limit(msgSize);
         readFileChannel.read(buffer, physicalOffset + 4 + 4);
         return buffer;
     }
@@ -151,21 +162,26 @@ public class CommitLog {
     //+ topicBytes.length;
 
     // return: topic, queueId, queueOffset and nextPhyOffset
-    public TopicQueueOffsetInfo getOffset(long phyOffset) throws IOException {
-        SizeInfo sizeInfo = readSize(phyOffset);
+    public TopicQueueOffsetInfo getOffset(long phyOffset, ByteBuffer prefixSizeBuffer,
+                                          ByteBuffer suffixBuffer, byte[] suffixBytes) throws IOException {
+        SizeInfo sizeInfo = readSize(phyOffset, prefixSizeBuffer);
         int logSize = sizeInfo.logSize;
         int msgSize = sizeInfo.msgSize;
 
+        suffixBuffer.clear();
         int capacity = logSize - 4 - 4 - msgSize;
-        ByteBuffer buffer = ByteBuffer.allocate(capacity);
-        buffer.clear();
-        readFileChannel.read(buffer, phyOffset + 4 + 4 + msgSize);
-        buffer.flip();
-        int queueId = buffer.getInt();
-        long queueOffset = buffer.getLong();
-        byte[] topicBytes = new byte[capacity - 4 - 8];
-        buffer.get(topicBytes);
-        String topic = new String(topicBytes, StandardCharsets.ISO_8859_1);
+        suffixBuffer.limit(capacity);
+        readFileChannel.read(suffixBuffer, phyOffset + 4 + 4 + msgSize);
+
+        suffixBuffer.flip();
+        int queueId = suffixBuffer.getInt();
+        long queueOffset = suffixBuffer.getLong();
+
+        int topicBytesNum = capacity - 4 - 8;
+        byte[] topicBytes = new byte[topicBytesNum];
+        suffixBuffer.get(topicBytes);
+        String topic = new String(topicBytes, 0, topicBytesNum, StandardCharsets.ISO_8859_1);
+
         long nextPhyOffset = phyOffset + logSize;
         return new TopicQueueOffsetInfo(topic, queueId, queueOffset, nextPhyOffset);
     }
@@ -211,20 +227,38 @@ public class CommitLog {
     }
 
     // return: logSize and msgSize
-    private SizeInfo readSize(long physicalOffset) throws IOException {
-        ByteBuffer sizeBuffer = ByteBuffer.allocate(4 + 4);
-        sizeBuffer.clear();
-        readFileChannel.read(sizeBuffer, physicalOffset);
-        sizeBuffer.flip();
-        return new SizeInfo(sizeBuffer.getInt(), sizeBuffer.getInt());
+    private SizeInfo readSize(long physicalOffset, ByteBuffer prefixSizeBuffer) throws IOException {
+        prefixSizeBuffer.clear();
+        readFileChannel.read(prefixSizeBuffer, physicalOffset);
+        prefixSizeBuffer.flip();
+        return new SizeInfo(prefixSizeBuffer.getInt(), prefixSizeBuffer.getInt());
     }
 
     private int readMsgSize(long physicalOffset) throws IOException {
-        ByteBuffer msgSizeBuffer = ByteBuffer.allocate(4);
+        ByteBuffer msgSizeBuffer = bufferContext.get().getMsgSizeBuffer();
         msgSizeBuffer.clear();
         readFileChannel.read(msgSizeBuffer, physicalOffset + 4);
         msgSizeBuffer.flip();
         return msgSizeBuffer.getInt();
+    }
+
+
+    //polish
+    public static final ThreadLocal<Buffers> bufferContext = ThreadLocal.withInitial(Buffers::new);
+
+    static class Buffers {
+        private final ByteBuffer msgSizeBuffer = ByteBuffer.allocateDirect(4);
+
+        private final ConcurrentHashMap<Integer, ByteBuffer> map = new ConcurrentHashMap<>();
+
+        public ByteBuffer getMsgSizeBuffer() {
+            return msgSizeBuffer;
+        }
+
+        public ByteBuffer getMsgDataBuffer() {
+            Integer queryIdx = DefaultMessageQueueImpl.queryIdxContext.get();
+            return map.computeIfAbsent(queryIdx, k -> ByteBuffer.allocateDirect(17 * 1024));
+        }
     }
 
     static class SizeInfo {
