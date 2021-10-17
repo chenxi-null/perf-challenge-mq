@@ -13,6 +13,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * data struct
@@ -64,19 +68,34 @@ public class ConsumeQueue implements StopWare {
 
     private final ByteBuffer wroteBuffer = ByteBuffer.allocateDirect(ITEM_SIZE);
 
+    private final Set<String> topics = new HashSet<>();
+
+    // (topic, queueId) -> fileChannel
+    private final Map<String, FileChannel> fileChannelMap = new HashMap<>();
+
     //polish
     public void write(String topic, int queueId, long queueOffset, long commitLogOffset) throws IOException {
         // sync write file in (topic + queueId)
 
-        Path dir = Paths.get(Config.getInstance().getConsumerQueueRootDir(), topic);
-        if (!Files.exists(dir)) {
-            Files.createDirectories(dir);
+        if (!topics.contains(topic)) {
+            Path dir = Paths.get(Config.getInstance().getConsumerQueueRootDir(), topic);
+            if (!Files.exists(dir)) {
+                Files.createDirectories(dir);
+                topics.add(topic);
+            }
         }
 
         // get file path by topic and queueId
-        Path path = Paths.get(Config.getInstance().getConsumerQueueRootDir(), topic, String.valueOf(queueId));
-        FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.APPEND,
-                StandardOpenOption.CREATE);
+        FileChannel fileChannel = fileChannelMap.computeIfAbsent(topic + "|_%_|" + queueId, k -> {
+            Path path = Paths.get(Config.getInstance().getConsumerQueueRootDir(), topic, String.valueOf(queueId));
+            try {
+                return FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.APPEND,
+                        StandardOpenOption.CREATE);
+            } catch (IOException e) {
+                log.error("failed to open fileChannel", e);
+                return null;
+            }
+        });
 
         // write
         wroteBuffer.clear();
@@ -85,6 +104,8 @@ public class ConsumeQueue implements StopWare {
         wroteBuffer.flip();
         fileChannel.write(wroteBuffer);
         fileChannel.force(true);
+
+        //fileChannel.close();
     }
 
     //----------------------------------------------------
@@ -124,7 +145,7 @@ public class ConsumeQueue implements StopWare {
                     long queueOffset = byteBuffer.getLong();
                     long phyOffset = byteBuffer.getLong();
                     table.put(topicName, queueId, queueOffset, phyOffset);
-                    log.info("consumeQueue loadTopicQueueTable, put: ({}, {} -> {}, {})",
+                    log.debug("consumeQueue loadTopicQueueTable, put: ({}, {} -> {}, {})",
                             topicName, queueId, queueOffset, phyOffset);
                     position += readBytes;
                 }

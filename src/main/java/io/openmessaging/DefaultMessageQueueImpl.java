@@ -18,6 +18,7 @@ public class DefaultMessageQueueImpl extends MessageQueue implements StopWare {
     private final Store store;
 
     public DefaultMessageQueueImpl() {
+        log.info(">>>> start <<<<");
         try {
             this.store = new Store();
         } catch (IOException e) {
@@ -93,6 +94,7 @@ public class DefaultMessageQueueImpl extends MessageQueue implements StopWare {
 
     @Override
     public void stop() {
+        log.info(">>>> stop <<<<");
         store.stop();
     }
 }
