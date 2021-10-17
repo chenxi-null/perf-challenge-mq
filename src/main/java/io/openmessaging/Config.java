@@ -80,7 +80,7 @@ public class Config {
 
     private int oneWriteMaxDataSize = 17 * 1024;
 
-    private int batchWriteMemBufferSizeThreshold = 47 * 1024;
+    private int batchWriteMemBufferSizeThreshold = (64 * 4 - 17) * 1024;
 
     private int batchWriteCommitLogMaxDataSize = batchWriteMemBufferSizeThreshold + oneWriteMaxDataSize;
 
