@@ -80,7 +80,7 @@ public class DefaultMessageQueueImpl extends MessageQueue implements StopWare {
         long endTime = System.currentTimeMillis();
         long costTime = endTime - startTime;
         long readNum = this.readNum.getAndIncrement();
-        if (readNum % 100 == 0) {
+        if (readNum <= 50 || readNum % 100 == 0) {
             log.info("finish mq getRange, idx = {}, cost = {}, totalCost = {}, ({}, {}), {}, {}",
                     readNum, costTime, queryTimeStats.addAndGet(costTime),
                     topic, queueId, startOffset, fetchNum);

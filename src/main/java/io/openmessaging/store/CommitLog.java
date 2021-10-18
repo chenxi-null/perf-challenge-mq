@@ -68,6 +68,8 @@ public class CommitLog {
         long startPhysicalOffset = readWrotePosition();
         long physicalOffset = startPhysicalOffset;
         long nextPhysicalOffset = 0;
+        int idx = 0;
+        int itemSize = items.size();
         for (Item item : items) {
             long queueOffset = store.getTopicQueueTable().calcNextQueueOffset(item.getTopic(), item.getQueueId());
             item.setQueueOffset(queueOffset);
@@ -79,11 +81,17 @@ public class CommitLog {
                         item.getTopic(), item.getQueueId(), queueOffset, item.getData());
             } catch (Throwable e) {
                 log.error("failed to appendByteBuffer, physicalOffset: {}, topic: {}, queueId: {}, queueOffset: {}, "
-                                + "wroteBuffer: {}, data: {}",
-                        physicalOffset, item.getTopic(), item.getQueueId(), queueOffset, wroteBuffer, item.getData());
+                                + "wroteBuffer: {}, data: {} | idx: {}, itemSize: {}",
+                        physicalOffset, item.getTopic(), item.getQueueId(), queueOffset,
+                        wroteBuffer, item.getData(), idx, itemSize);
+
+                // sync throw exception in order to fast-fail
+                item.getDoneFuture().done(null);
+
                 throw e;
             }
             physicalOffset = nextPhysicalOffset;
+            ++idx;
         }
 
         wroteBuffer.flip();
