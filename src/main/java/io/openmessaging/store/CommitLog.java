@@ -161,13 +161,20 @@ public class CommitLog {
     }
 
     public ByteBuffer getData(long physicalOffset) throws IOException {
-        int msgSize = readMsgSize(physicalOffset);
+        int msgSize = -1;
+        ByteBuffer buffer = null;
+        try {
+            msgSize = readMsgSize(physicalOffset);
 
-        ByteBuffer buffer = bufferContext.get().getMsgDataBuffer();
-        buffer.clear();
-        buffer.limit(msgSize);
-        readFileChannel.read(buffer, physicalOffset + 4 + 4);
-        return buffer;
+            buffer = bufferContext.get().getMsgDataBuffer();
+            buffer.clear();
+            buffer.limit(msgSize);
+            readFileChannel.read(buffer, physicalOffset + 4 + 4);
+            return buffer;
+        } catch (Throwable e) {
+            log.error("physicalOffset: {}, msgSize: {}, buffer: {}", physicalOffset, msgSize, buffer);
+            throw e;
+        }
     }
 
     //+ 4 /* logSize */
