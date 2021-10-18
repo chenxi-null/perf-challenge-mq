@@ -23,6 +23,7 @@ public class Config {
 
 
     private Config() {
+        updateBatchWriteCommitLogMaxDataSize();
         setRootDir(DEFAULT_ROOT_DIR);
     }
 
@@ -72,7 +73,7 @@ public class Config {
         return batchWriteTimeWindowCheckInternal;
     }
 
-    private int batchWriteTimeWindowCheckInternal = 100;
+    private int batchWriteTimeWindowCheckInternal = 10;
 
     private int batchWriteWaitTimeThreshold = 5;
 
@@ -82,10 +83,10 @@ public class Config {
 
     private int batchWriteMemBufferSizeThreshold = (64 * 4 - 17) * 1024;
 
-    private int batchWriteCommitLogMaxDataSize = batchWriteMemBufferSizeThreshold + oneWriteMaxDataSize;
+    private int batchWriteCommitLogMaxDataSize;
 
     private void updateBatchWriteCommitLogMaxDataSize() {
-        this. batchWriteCommitLogMaxDataSize = batchWriteMemBufferSizeThreshold + oneWriteMaxDataSize;
+        this. batchWriteCommitLogMaxDataSize = batchWriteMemBufferSizeThreshold + 2 * oneWriteMaxDataSize;
     }
 
     public void setOneWriteMaxDataSize(int oneWriteMaxDataSize) {
