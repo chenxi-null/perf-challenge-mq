@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ConsumeQueueDataSyncTest extends BaseTest {
 
     @Test
-    void dataSync() throws IOException {
+    void dataSync() throws IOException, InterruptedException {
         Config.getInstance().setEnableConsumeQueueDataSync(false);
 
         DefaultMessageQueueImpl mq = new DefaultMessageQueueImpl();

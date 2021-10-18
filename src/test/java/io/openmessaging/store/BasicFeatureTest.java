@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class BasicFeatureTest extends BaseTest {
 
     @Test
-    void baseTest() {
+    void baseTest() throws InterruptedException {
         DefaultMessageQueueImpl mq = new DefaultMessageQueueImpl();
         setMQ(mq);
         doBaseTest(mq);
@@ -28,12 +28,12 @@ class BasicFeatureTest extends BaseTest {
 
     @Disabled
     @Test
-    void baseTest_InMemoryImpl() {
+    void baseTest_InMemoryImpl() throws InterruptedException {
         doBaseTest(new InMemoryImpl());
     }
 
 
-    void doBaseTest(MessageQueue mq) {
+    void doBaseTest(MessageQueue mq) throws InterruptedException {
 
         writeTestData(mq);
 

@@ -64,8 +64,6 @@ public class Config {
 
     //----------------------------------------------------
 
-    private int batchWriteTimeWindowCheckInternal = 100;
-
     public void setBatchWriteTimeWindowCheckInternal(int batchWriteTimeWindowCheckInternal) {
         this.batchWriteTimeWindowCheckInternal = batchWriteTimeWindowCheckInternal;
     }
@@ -73,6 +71,8 @@ public class Config {
     public int getBatchWriteTimeWindowCheckInternal() {
         return batchWriteTimeWindowCheckInternal;
     }
+
+    private int batchWriteTimeWindowCheckInternal = 100;
 
     private int batchWriteWaitTimeThreshold = 5;
 

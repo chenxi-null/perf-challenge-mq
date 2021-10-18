@@ -45,7 +45,7 @@ public class DefaultMessageQueueImpl extends MessageQueue implements StopWare {
             long wroteNum = this.wroteNum.getAndIncrement();
             int dataSize = data.limit(); // or data.remaining();
             long wroteBytes = wroteDataSizeStat.addAndGet(dataSize);
-            if (wroteNum % 100 == 0) {
+            if (wroteNum < 50 || wroteNum % 100 == 0) {
                 log.info("finish mq append, idx = {}, cost = {}, ({}, {}), dataSize: {}, wroteBytes: {}",
                         wroteNum, costTime,
                         topic, queueId, dataSize, wroteBytes);
