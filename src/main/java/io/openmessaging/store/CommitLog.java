@@ -74,8 +74,15 @@ public class CommitLog {
 
             item.setPhysicalOffset(physicalOffset);
 
-            nextPhysicalOffset = appendByteBuffer(wroteBuffer, physicalOffset,
-                    item.getTopic(), item.getQueueId(), queueOffset, item.getData());
+            try {
+                nextPhysicalOffset = appendByteBuffer(wroteBuffer, physicalOffset,
+                        item.getTopic(), item.getQueueId(), queueOffset, item.getData());
+            } catch (Throwable e) {
+                log.error("failed to appendByteBuffer, physicalOffset: {}, topic: {}, queueId: {}, queueOffset: {}, "
+                                + "wroteBuffer: {}, data: {}",
+                        physicalOffset, item.getTopic(), item.getQueueId(), queueOffset, wroteBuffer, item.getData());
+                throw e;
+            }
             physicalOffset = nextPhysicalOffset;
         }
 
