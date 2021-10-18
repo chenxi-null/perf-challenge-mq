@@ -178,7 +178,8 @@ public class CommitLog {
     }
 
     //+ 4 /* logSize */
-    //+ 4 /* msgSize */ + msgSize
+    //+ 4 /* msgSize */
+    // + msgSize
     //+ 4 /* queueId */
     //+ 8 /* queueOffset */
     //+ topicBytes.length;
