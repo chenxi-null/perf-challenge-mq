@@ -241,12 +241,11 @@ public class CommitLogProcessor implements StopWare {
 
         @Override
         public void run() {
-            //while (true) {
             try {
                 long currentTime = System.currentTimeMillis();
                 long elapsedTime = currentTime - readyBuffer.getTimeWindowStartTime();
-                //log.debug("elapsedTime: {}", elapsedTime);
-                if (elapsedTime >= Config.getInstance().getBatchWriteWaitTimeThreshold()) {
+                if (elapsedTime >= Config.getInstance().getBatchWriteWaitTimeThreshold()
+                        && readyBuffer.size() > 0) {
                     try {
                         readyBuffer.write();
                     } catch (Exception e) {
