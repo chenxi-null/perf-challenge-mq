@@ -8,11 +8,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -46,10 +46,12 @@ public class CommitLog {
         Path commitLogPath = Config.getInstance().getCommitLogPath();
         FileUtil.createFileIfNotExists(commitLogPath);
 
-        this.writeFileChannel = FileChannel.open(commitLogPath,
-                StandardOpenOption.WRITE, StandardOpenOption.APPEND);
-        this.readFileChannel = FileChannel.open(commitLogPath,
-                StandardOpenOption.READ);
+        //this.writeFileChannel = FileChannel.open(commitLogPath,
+        //        StandardOpenOption.WRITE, StandardOpenOption.APPEND);
+        //this.readFileChannel = FileChannel.open(commitLogPath,
+        //        StandardOpenOption.READ);
+        this.writeFileChannel = new RandomAccessFile(commitLogPath.toFile(), "rw").getChannel();
+        this.readFileChannel = writeFileChannel;
 
         wrotePositionBuffer = ByteBuffer.allocateDirect(8);
         updateWrotePosition(8);
@@ -96,6 +98,7 @@ public class CommitLog {
         }
 
         wroteBuffer.flip();
+        writeFileChannel.position(startPhysicalOffset);
         writeFileChannel.write(wroteBuffer);
         writeFileChannel.force(true);
 
@@ -174,7 +177,7 @@ public class CommitLog {
             readFileChannel.read(buffer, physicalOffset + 4 + 4);
             return buffer;
         } catch (Throwable e) {
-            log.error("physicalOffset: {}, msgSize: {}, buffer: {}", physicalOffset, msgSize, buffer);
+            log.error("physicalOffset: {}, msgSize: {}, buffer: {}", physicalOffset, msgSize, buffer, e);
             throw e;
         }
     }
