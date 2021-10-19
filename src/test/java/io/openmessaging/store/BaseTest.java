@@ -141,7 +141,6 @@ public abstract class BaseTest {
             return null;
         }
         byte[] bytes = new byte[buffer.limit()];
-        buffer.flip();
         buffer.get(bytes);
         return new String(bytes, StandardCharsets.ISO_8859_1);
     }

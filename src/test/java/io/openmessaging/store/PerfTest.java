@@ -3,6 +3,7 @@ package io.openmessaging.store;
 import io.openmessaging.Config;
 import io.openmessaging.DefaultMessageQueueImpl;
 import io.openmessaging.common.NamedThreadFactory;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,7 @@ import java.util.concurrent.TimeUnit;
  * @author chenxi20
  * @date 2021/10/19
  */
+@Disabled
 public class PerfTest extends BaseTest {
 
     private static final Logger log = LoggerFactory.getLogger(PerfTest.class);
