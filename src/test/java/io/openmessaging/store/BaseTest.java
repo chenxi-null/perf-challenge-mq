@@ -30,12 +30,10 @@ public abstract class BaseTest {
 
     private static final Logger log = LoggerFactory.getLogger(BaseTest.class);
 
-    public static int maxMsgSize = 100;
-
     @BeforeAll
     static void beforeAll() {
         int size = "content-1-10001_1".getBytes().length;
-        Config.getInstance().setOneWriteMaxDataSize(maxMsgSize);
+        Config.getInstance().setOneWriteMaxDataSize(100);
         Config.getInstance().setBatchWriteMemBufferSizeThreshold(size + size);
 
         String testRootDir = "/Users/chenxi20/Downloads/code/chenxi-projects/mq-sample/output/essd/mqx";
@@ -127,7 +125,7 @@ public abstract class BaseTest {
     }
 
     private final ThreadLocal<ByteBuffer> wroteByteBufferContext =
-            ThreadLocal.withInitial(() -> ByteBuffer.allocate(maxMsgSize));
+            ThreadLocal.withInitial(() -> ByteBuffer.allocate(Config.getInstance().getOneWriteMaxDataSize()));
 
     ByteBuffer toByteBuffer(String s) {
         ByteBuffer wroteByteBuffer = wroteByteBufferContext.get();
