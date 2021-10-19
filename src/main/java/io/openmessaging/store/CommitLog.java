@@ -144,7 +144,7 @@ public class CommitLog {
     public long readWrotePosition() throws IOException {
         wrotePositionBuffer.clear();
         int readBytes = readFileChannel.read(wrotePositionBuffer, 0);
-        Util.assertTrue(readBytes == 8);
+        Util.assertTrue(readBytes == 8, "readBytes: " + readBytes);
         wrotePositionBuffer.flip();
         return wrotePositionBuffer.getLong();
     }
