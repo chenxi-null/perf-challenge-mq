@@ -74,6 +74,8 @@ public class DefaultMessageQueueImpl extends MessageQueue implements StopWare {
                 throw new RuntimeException(e);
             }
             if (data != null) {
+                // race requirement
+                data.position(0);
                 map.put(i, data);
             }
         }
