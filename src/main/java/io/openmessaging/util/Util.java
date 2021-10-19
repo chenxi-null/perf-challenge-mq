@@ -12,8 +12,12 @@ public class Util {
     private static final Logger log = LoggerFactory.getLogger(Util.class);
 
     public static void assertTrue(boolean expr) {
+        assertTrue(expr, "");
+    }
+
+    public static void assertTrue(boolean expr, String desc) {
         if (!expr) {
-            throw new AssertionError();
+            throw new AssertionError(desc);
         }
     }
 

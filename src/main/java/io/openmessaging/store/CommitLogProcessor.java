@@ -214,7 +214,7 @@ public class CommitLogProcessor implements StopWare {
                 if (readyBuffer.size() >= Config.getInstance().getBatchWriteMemBufferSizeThreshold()) {
                     try {
                         readyBuffer.write();
-                    } catch (Exception e) {
+                    } catch (Throwable e) {
                         log.error("failed to write", e);
                     }
                 }
@@ -248,7 +248,7 @@ public class CommitLogProcessor implements StopWare {
                         && readyBuffer.size() > 0) {
                     try {
                         readyBuffer.write();
-                    } catch (Exception e) {
+                    } catch (Throwable e) {
                         log.error("failed to write", e);
                     }
                 }

@@ -83,9 +83,10 @@ public class CommitLog {
                 log.error("failed to appendByteBuffer, physicalOffset: {}, topic: {}, queueId: {}, queueOffset: {}, "
                                 + "wroteBuffer: {}, data: {} | idx: {}, itemSize: {}",
                         physicalOffset, item.getTopic(), item.getQueueId(), queueOffset,
-                        wroteBuffer, item.getData(), idx, itemSize);
+                        wroteBuffer, item.getData(),
+                        idx, itemSize, e);
 
-                // sync throw exception in order to fast-fail
+                // async throw exception in order to fast-fail
                 item.getDoneFuture().done(null);
 
                 throw e;
@@ -123,6 +124,7 @@ public class CommitLog {
         byte[] topicBytes = topic.getBytes(StandardCharsets.ISO_8859_1);
 
         int msgSize = data.remaining();
+        Util.assertTrue(msgSize <= Config.getInstance().getOneWriteMaxDataSize(), "unexpected msgSize: " + msgSize);
         int bufferSize = logSizeBytesNum /* logSize */
                 + msgSizeBytesNum /* msgSize */
                 + msgSize /* data */

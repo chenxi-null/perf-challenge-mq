@@ -12,13 +12,9 @@ import java.util.concurrent.locks.ReentrantLock;
 public class TopicQueueTable {
 
     // topic-queueId-queueOffset -> phyOffset
-    //#track
-    //private final Map<String, Long> phyOffsets = new HashMap<>();
     private final Map<String, Long> phyOffsets = new ConcurrentHashMap<>();
 
     // topic-queueId -> maxQueueOffset
-    //#track
-    //private final Map<String, Long> maxQueueOffsets = new HashMap<>();
     private final Map<String, Long> maxQueueOffsets = new ConcurrentHashMap<>();
 
     private final ReentrantLock wroteLock = new ReentrantLock();
@@ -49,6 +45,9 @@ public class TopicQueueTable {
         return maxQueueOffsets.getOrDefault(buildKey(topic, queueId), -1L) + 1;
     }
 
+    //----------------------------------------------------
+
+    // for test
     public long getMsgNum() {
         long sum = 0;
         for (Long num : maxQueueOffsets.values()) {
