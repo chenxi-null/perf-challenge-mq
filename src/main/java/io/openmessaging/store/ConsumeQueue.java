@@ -46,6 +46,8 @@ public class ConsumeQueue implements StopWare {
     // (topic, queueId) -> fileChannel
     private final Map<String, FileChannel> fileChannelMap = new HashMap<>();
 
+    private long processedPhysicalOffset;
+
     public ConsumeQueue(Store store) {
         this.store = store;
         this.prefixSizeBuffer = ByteBuffer.allocateDirect(4 + 4);
@@ -53,60 +55,26 @@ public class ConsumeQueue implements StopWare {
         this.suffixBytes = new byte[100];
     }
 
-    // file position & check by crc
-    //
-    // Persist:
-    //  - sync write commitLog
-    //      write file
-    //      update mem topicQueueTable
-    //  - async consumeQueue
-    //      read from [completedPhyOffsetOfConsumeQueue, maxPhyOffsetOfCommitLog)
-    //
-    // Start and Recover:
-    //  - load files
-    //  - recover consumeQueue and get maxPhyOffsetOfConsumeQueue
-    //      check data item
-    //      load mem topicQueueTable
-    //  - recover commitLog from maxPhyOffsetOfConsumeQueue
-    //      check data item by crc
-    //      update mem topicQueueTable
-    //
-    //
-    //
-    // -----
-    //
-    // persist order:
-    //  0. commitLog
-    //  1. logWrotePosition
-    //  2. consumeQueue
-    //  3. queueOffset
-    //  4. logCheckPoint
-    //
-    // recovery behaviour in crash cases:
-    //  - crash before (1): no data recovery. occur overlap write of commitLog file
-    //  - crash before (2):    data recovery. normal recovery data of consumerQueue from [logCheckpoint, logWrotePosition]
-    //  - crash before (3): no data recovery. occur overlap write of consumeQueue file
-    //  - crash before (4):    data recovery. but ignore duplicated data when writing into consumeQueue
-    //
     // sync invoke
     public void syncFromCommitLog() throws IOException {
-        // TODO:
-        long phyOffset = store.getCheckpoint().getPhyOffset();
-        long commitLogWrotePosition = store.getCommitLog().readWrotePosition();
-        log.debug("syncFromCommitLog starting, phyOffset: {}, commitLogWrotePosition: {}", phyOffset, commitLogWrotePosition);
-        while (phyOffset < commitLogWrotePosition) {
-            CommitLog.TopicQueueOffsetInfo info = store.getCommitLog().getOffset(phyOffset,
+        long processedPhyOffset = getProcessedPhysicalOffset();
+        long commitLogWrotePosition = store.getCommitLog().getWrotePosition();
+        log.debug("syncFromCommitLog starting, processedPhyOffset: {}, commitLogWrotePosition: {}",
+                processedPhyOffset, commitLogWrotePosition);
+        while (processedPhyOffset < commitLogWrotePosition) {
+            CommitLog.TopicQueueOffsetInfo info = store.getCommitLog().getLogicItemInfo(processedPhyOffset,
                     prefixSizeBuffer, suffixBuffer, suffixBytes);
 
             // write into consumeQueue
-            write(info.getTopic(), info.getQueueId(), info.getQueueOffset(), phyOffset);
+            write(info.getTopic(), info.getQueueId(), info.getQueueOffset(), processedPhyOffset);
             log.debug("syncFromCommitLog, wrote: {}", info);
 
-            // update checkpoint
-            store.getCheckpoint().updatePhyOffset(info.getNextPhyOffset());
-
-            phyOffset = info.getNextPhyOffset();
+            processedPhyOffset = info.getNextPhyOffset();
         }
+        if (processedPhyOffset > commitLogWrotePosition) {
+            log.error("[bug] processedPhyOffset > commitLogWrotePosition");
+        }
+        setProcessedPhysicalOffset(commitLogWrotePosition);
     }
 
     // TODO: fix, need record wrotePosition
@@ -195,5 +163,13 @@ public class ConsumeQueue implements StopWare {
     @Override
     public void stop() {
         log.info("stopped");
+    }
+
+    public long getProcessedPhysicalOffset() {
+        return processedPhysicalOffset;
+    }
+
+    public void setProcessedPhysicalOffset(long processedPhysicalOffset) {
+        this.processedPhysicalOffset = processedPhysicalOffset;
     }
 }

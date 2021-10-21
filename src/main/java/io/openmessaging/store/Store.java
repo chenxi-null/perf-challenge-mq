@@ -13,6 +13,26 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+// Persist:
+//  - sync write commitLog
+//      write disk
+//      update mem topicQueueTable
+//      update wrotePosition
+//  - async consumeQueue
+//      read from [completedPhyOffsetOfConsumeQueue, maxPhyOffsetOfCommitLog)
+//      write disk
+//      update maxPhyOffset
+//
+// Start and Recover:
+//  - load files
+//  - recover all consumeQueue files and get maxPhyOffsetOfConsumeQueue
+//      check data item
+//      load mem topicQueueTable
+//  - recover commitLog from maxPhyOffsetOfConsumeQueue
+//      check data item by crc
+//      update wrotePosition
+//      update mem topicQueueTable
+//
 public class Store implements StopWare {
 
     private static final Logger log = LoggerFactory.getLogger(Store.class);
@@ -20,8 +40,6 @@ public class Store implements StopWare {
     private final CommitLog commitLog;
 
     private final ConsumeQueue consumeQueue;
-
-    private final Checkpoint checkpoint;
 
     private final ConsumeQueueService consumeQueueService;
 
@@ -37,7 +55,6 @@ public class Store implements StopWare {
 
         this.commitLog = new CommitLog(this);
         this.consumeQueue = new ConsumeQueue(this);
-        this.checkpoint = new Checkpoint(this);
         this.consumeQueueService = new ConsumeQueueService(this);
 
         this.commitLogProcessor = new CommitLogProcessor(this);
@@ -92,10 +109,6 @@ public class Store implements StopWare {
 
     public TopicQueueTable getTopicQueueTable() {
         return topicQueueTable;
-    }
-
-    public Checkpoint getCheckpoint() {
-        return checkpoint;
     }
 
     public ConsumeQueue getConsumeQueue() {

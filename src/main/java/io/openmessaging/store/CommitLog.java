@@ -35,10 +35,10 @@ public class CommitLog {
 
     private final FileChannel readFileChannel;
 
-    private final ByteBuffer wrotePositionBuffer;
-
     private final ByteBuffer wroteBuffer =
             ByteBuffer.allocateDirect(Config.getInstance().getBatchWriteCommitLogMaxDataSize());
+
+    private volatile long wrotePosition = -1;
 
     public CommitLog(Store store) throws IOException {
         this.store = store;
@@ -46,28 +46,18 @@ public class CommitLog {
         Path commitLogPath = Config.getInstance().getCommitLogPath();
         FileUtil.createFileIfNotExists(commitLogPath);
 
-        //this.writeFileChannel = FileChannel.open(commitLogPath,
-        //        StandardOpenOption.WRITE, StandardOpenOption.APPEND);
-        //this.readFileChannel = FileChannel.open(commitLogPath,
-        //        StandardOpenOption.READ);
         this.writeFileChannel = new RandomAccessFile(commitLogPath.toFile(), "rw").getChannel();
         this.readFileChannel = writeFileChannel;
-
-        wrotePositionBuffer = ByteBuffer.allocateDirect(8);
-        updateWrotePosition(8);
     }
 
-    public int getInitWrotePosition() {
-        return 8;
-    }
-
+    // sync invoke
     public void writeAndNotify(List<Item> items) throws IOException {
         if (items.isEmpty()) {
             return;
         }
         wroteBuffer.clear();
 
-        long startPhysicalOffset = readWrotePosition();
+        long startPhysicalOffset = getWrotePosition();
         long physicalOffset = startPhysicalOffset;
         long nextPhysicalOffset = 0;
         int idx = 0;
@@ -102,14 +92,14 @@ public class CommitLog {
         writeFileChannel.write(wroteBuffer);
         writeFileChannel.force(true);
 
-        updateWrotePosition(nextPhysicalOffset);
-        log.debug("wrote, physicalOffset: {}, nextPhysicalOffset: {}", startPhysicalOffset, nextPhysicalOffset);
-
         for (Item item : items) {
             updateTopicQueueTable(item.getTopic(), item.getQueueId(), item.getQueueOffset(), item.getPhysicalOffset());
             //notify
             item.getDoneFuture().done(item.getQueueOffset());
         }
+
+        setWrotePosition(nextPhysicalOffset);
+        log.debug("wrote, physicalOffset: {}, nextPhysicalOffset: {}", startPhysicalOffset, nextPhysicalOffset);
     }
 
     //----------------------------------------------------
@@ -144,23 +134,6 @@ public class CommitLog {
         return physicalOffset + bufferSize;
     }
 
-    public long readWrotePosition() throws IOException {
-        wrotePositionBuffer.clear();
-        int readBytes = readFileChannel.read(wrotePositionBuffer, 0);
-        Util.assertTrue(readBytes == 8, "readBytes: " + readBytes);
-        wrotePositionBuffer.flip();
-        return wrotePositionBuffer.getLong();
-    }
-
-    public void updateWrotePosition(long nextPhyOffset) throws IOException {
-        log.debug("updateWrotePosition: " + nextPhyOffset);
-        wrotePositionBuffer.clear();
-        wrotePositionBuffer.putLong(nextPhyOffset);
-        wrotePositionBuffer.flip();
-        writeFileChannel.write(wrotePositionBuffer, 0);
-        writeFileChannel.force(true);
-    }
-
     private void updateTopicQueueTable(String topic, int queueId, long queueOffset, long physicalOffset) {
         store.getTopicQueueTable().put(topic, queueId, queueOffset, physicalOffset);
     }
@@ -184,14 +157,14 @@ public class CommitLog {
 
     //+ 4 /* logSize */
     //+ 4 /* msgSize */
-    // + msgSize
+    //+ msgSize
     //+ 4 /* queueId */
     //+ 8 /* queueOffset */
     //+ topicBytes.length;
 
     // return: topic, queueId, queueOffset and nextPhyOffset
-    public TopicQueueOffsetInfo getOffset(long phyOffset, ByteBuffer prefixSizeBuffer,
-                                          ByteBuffer suffixBuffer, byte[] suffixBytes) throws IOException {
+    public TopicQueueOffsetInfo getLogicItemInfo(long phyOffset, ByteBuffer prefixSizeBuffer,
+                                                 ByteBuffer suffixBuffer, byte[] suffixBytes) throws IOException {
         SizeInfo sizeInfo = readSize(phyOffset, prefixSizeBuffer);
         int logSize = sizeInfo.logSize;
         int msgSize = sizeInfo.msgSize;
@@ -297,5 +270,13 @@ public class CommitLog {
             this.logSize = logSize;
             this.msgSize = msgSize;
         }
+    }
+
+    public void setWrotePosition(long wrotePosition) {
+        this.wrotePosition = wrotePosition;
+    }
+
+    public long getWrotePosition() {
+        return wrotePosition;
     }
 }
