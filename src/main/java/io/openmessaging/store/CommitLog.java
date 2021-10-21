@@ -38,7 +38,7 @@ public class CommitLog {
     private final ByteBuffer wroteBuffer =
             ByteBuffer.allocateDirect(Config.getInstance().getBatchWriteCommitLogMaxDataSize());
 
-    private volatile long wrotePosition = -1;
+    private volatile long wrotePosition = 0;
 
     public CommitLog(Store store) throws IOException {
         this.store = store;
@@ -185,6 +185,12 @@ public class CommitLog {
 
         long nextPhyOffset = phyOffset + logSize;
         return new TopicQueueOffsetInfo(topic, queueId, queueOffset, nextPhyOffset);
+    }
+
+    public void recover(long maxPhysicalOffset) {
+        //      check data item by crc
+        //      update wrotePosition
+        //      update mem topicQueueTable
     }
 
     public static class TopicQueueOffsetInfo {

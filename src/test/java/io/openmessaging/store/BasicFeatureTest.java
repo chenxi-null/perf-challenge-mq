@@ -1,6 +1,5 @@
 package io.openmessaging.store;
 
-import io.openmessaging.DefaultMessageQueueImpl;
 import io.openmessaging.InMemoryImpl;
 import io.openmessaging.MessageQueue;
 import org.junit.jupiter.api.Disabled;
@@ -21,9 +20,7 @@ class BasicFeatureTest extends BaseTest {
 
     @Test
     void baseTest() throws InterruptedException {
-        DefaultMessageQueueImpl mq = new DefaultMessageQueueImpl();
-        setMQ(mq);
-        doBaseTest(mq);
+        doBaseTest(getMQ());
     }
 
     @Disabled

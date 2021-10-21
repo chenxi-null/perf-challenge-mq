@@ -18,10 +18,10 @@ import java.util.concurrent.TimeUnit;
 //      write disk
 //      update mem topicQueueTable
 //      update wrotePosition
-//  - async consumeQueue
-//      read from [completedPhyOffsetOfConsumeQueue, maxPhyOffsetOfCommitLog)
+//  - async build consumeQueue
+//      read from commitLog, range is [consumeQueue.processedPhyOffset, commitLog.wrotePosition]
 //      write disk
-//      update maxPhyOffset
+//      update processedPhyOffset
 //
 // Start and Recover:
 //  - load files
@@ -43,8 +43,6 @@ public class Store implements StopWare {
 
     private final ConsumeQueueService consumeQueueService;
 
-    private final TopicQueueTable topicQueueTable;
-
     private final CommitLogProcessor commitLogProcessor;
 
     private final ScheduledExecutorService consumeQueueSyncScheduledService =
@@ -59,13 +57,39 @@ public class Store implements StopWare {
 
         this.commitLogProcessor = new CommitLogProcessor(this);
 
-        this.topicQueueTable = dataRecovery();
+        start();
+    }
+
+    public void start() throws IOException {
+        dataRecovery();
+
+        consumeQueue.syncFromCommitLog();
 
         // asyc write into consumeQueue
         if (Config.getInstance().isEnableConsumeQueueDataSync()) {
             consumeQueueSyncScheduledService
                     .scheduleAtFixedRate(consumeQueueService, 3, 3, TimeUnit.SECONDS);
         }
+    }
+
+    // Start and Recover:
+    //  - load files
+    //  - recover all consumeQueue files and get maxPhyOffsetOfConsumeQueue
+    //      check data item
+    //      load mem topicQueueTable
+    //  - recover commitLog from maxPhyOffsetOfConsumeQueue
+    //      check data item by crc
+    //      update wrotePosition
+    //      update mem topicQueueTable
+    //
+    //  |---------------|------------------|
+    //                 cq               log, memTable
+    //
+    private void dataRecovery() throws IOException {
+
+        long maxPhysicalOffset = consumeQueue.recover();
+
+        commitLog.recover(maxPhysicalOffset);
     }
 
     @Override
@@ -82,17 +106,12 @@ public class Store implements StopWare {
         this.consumeQueueService.stop();
     }
 
-    private TopicQueueTable dataRecovery() throws IOException {
-        consumeQueue.syncFromCommitLog();
-        return consumeQueue.loadTopicQueueTable();
-    }
-
     public long write(String topic, int queueId, ByteBuffer data) throws IOException, InterruptedException {
         return commitLogProcessor.write(topic, queueId, data);
     }
 
     public ByteBuffer getData(String topic, int queueId, long offset) throws IOException {
-        long commitLogOffset = topicQueueTable.getPhyOffset(topic, queueId, offset);
+        long commitLogOffset = getTopicQueueTable().getPhyOffset(topic, queueId, offset);
         if (commitLogOffset < 0) {
             return null;
         }
@@ -103,12 +122,8 @@ public class Store implements StopWare {
         return commitLog;
     }
 
-    public ConsumeQueueService getConsumeQueueService() {
-        return consumeQueueService;
-    }
-
     public TopicQueueTable getTopicQueueTable() {
-        return topicQueueTable;
+        return consumeQueue.getTopicQueueTable();
     }
 
     public ConsumeQueue getConsumeQueue() {

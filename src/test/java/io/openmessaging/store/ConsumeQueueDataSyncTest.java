@@ -19,8 +19,7 @@ class ConsumeQueueDataSyncTest extends BaseTest {
     void dataSync() throws IOException, InterruptedException {
         Config.getInstance().setEnableConsumeQueueDataSync(false);
 
-        DefaultMessageQueueImpl mq = new DefaultMessageQueueImpl();
-        setMQ(mq);
+        DefaultMessageQueueImpl mq = getMQ();
 
         Store store = mq.getStore();
         ConsumeQueue consumeQueue = store.getConsumeQueue();

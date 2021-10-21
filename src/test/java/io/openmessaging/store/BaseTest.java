@@ -48,18 +48,16 @@ public abstract class BaseTest {
         System.out.println("---- finish file cleanup ---");
     }
 
-    private DefaultMessageQueueImpl mq;
+    private final DefaultMessageQueueImpl mq = new DefaultMessageQueueImpl();
 
-    void setMQ(DefaultMessageQueueImpl mq) {
-        this.mq = mq;
+    protected DefaultMessageQueueImpl getMQ() {
+        return this.mq;
     }
 
     @AfterEach
     void tearDown() {
-        if (mq != null) {
-            System.out.println("--- cleanup: mq stop ---");
-            mq.stop();
-        }
+        System.out.println("--- cleanup: mq stop ---");
+        mq.stop();
     }
 
     /*

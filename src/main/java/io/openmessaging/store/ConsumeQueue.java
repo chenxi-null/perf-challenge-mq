@@ -48,11 +48,22 @@ public class ConsumeQueue implements StopWare {
 
     private long processedPhysicalOffset;
 
+    private TopicQueueTable topicQueueTable;
+
     public ConsumeQueue(Store store) {
         this.store = store;
         this.prefixSizeBuffer = ByteBuffer.allocateDirect(4 + 4);
         this.suffixBuffer = ByteBuffer.allocateDirect(120);
         this.suffixBytes = new byte[100];
+    }
+
+    // return processedPhysicalOffset
+    public long recover() throws IOException {
+        //      check data item
+        //      load mem topicQueueTable
+
+        this.topicQueueTable = loadTopicQueueTable();
+        return 0;
     }
 
     // sync invoke
@@ -165,11 +176,15 @@ public class ConsumeQueue implements StopWare {
         log.info("stopped");
     }
 
-    public long getProcessedPhysicalOffset() {
+    private long getProcessedPhysicalOffset() {
         return processedPhysicalOffset;
     }
 
-    public void setProcessedPhysicalOffset(long processedPhysicalOffset) {
+    private void setProcessedPhysicalOffset(long processedPhysicalOffset) {
         this.processedPhysicalOffset = processedPhysicalOffset;
+    }
+
+    public TopicQueueTable getTopicQueueTable() {
+        return this.topicQueueTable;
     }
 }

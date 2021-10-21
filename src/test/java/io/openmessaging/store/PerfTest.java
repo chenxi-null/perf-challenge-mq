@@ -27,8 +27,7 @@ public class PerfTest extends BaseTest {
     void concurrentWriteAndRead() throws InterruptedException {
         Config.getInstance().setOneWriteMaxDataSize(10 * 1024);
 
-        DefaultMessageQueueImpl mq = new DefaultMessageQueueImpl();
-        setMQ(mq);
+        DefaultMessageQueueImpl mq = getMQ();
 
         CountDownLatch latch = new CountDownLatch(1);
         Random random = new Random();
