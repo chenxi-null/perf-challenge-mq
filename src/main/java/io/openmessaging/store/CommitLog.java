@@ -188,6 +188,7 @@ public class CommitLog {
     }
 
     public void recover(long maxPhysicalOffset) {
+        // TODO:
         //      check data item by crc
         //      update wrotePosition
         //      update mem topicQueueTable

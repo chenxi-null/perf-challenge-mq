@@ -60,7 +60,29 @@ public class Store implements StopWare {
         start();
     }
 
+    // Start and Recover:
+    //  - recover all consumeQueue files and get maxPhyOffsetOfConsumeQueue
+    //      check data item
+    //      load mem topicQueueTable
+    //
+    //  - recover commitLog from maxPhyOffsetOfConsumeQueue
+    //      check data item by crc
+    //      update wrote position
+    //      update mem topicQueueTable
+    //
+    //  - sync logic data
+    //
+    //  |---------------|------------------|
+    //              cq, table             log
+    //
+    //  |---------------|------------------|
+    //                 cq              log, table
+    //
+    //  |---------------|------------------|
+    //                               cq, log, table
+    //
     public void start() throws IOException {
+        // TODO:
         dataRecovery();
 
         consumeQueue.syncFromCommitLog();
@@ -71,20 +93,6 @@ public class Store implements StopWare {
                     .scheduleAtFixedRate(consumeQueueService, 3, 3, TimeUnit.SECONDS);
         }
     }
-
-    // Start and Recover:
-    //  - load files
-    //  - recover all consumeQueue files and get maxPhyOffsetOfConsumeQueue
-    //      check data item
-    //      load mem topicQueueTable
-    //  - recover commitLog from maxPhyOffsetOfConsumeQueue
-    //      check data item by crc
-    //      update wrotePosition
-    //      update mem topicQueueTable
-    //
-    //  |---------------|------------------|
-    //                 cq               log, memTable
-    //
     private void dataRecovery() throws IOException {
 
         long maxPhysicalOffset = consumeQueue.recover();

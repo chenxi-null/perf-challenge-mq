@@ -2,17 +2,18 @@ package io.openmessaging.store;
 
 import io.openmessaging.Config;
 import io.openmessaging.common.StopWare;
+import io.openmessaging.util.ChecksumUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -29,7 +30,7 @@ public class ConsumeQueue implements StopWare {
 
     private static final Logger log = LoggerFactory.getLogger(ConsumeQueue.class);
 
-    public static final int ITEM_SIZE = 8 + 8;
+    public static final int ITEM_SIZE = 8 + 8 + 4;
 
     private final Store store;
 
@@ -39,9 +40,9 @@ public class ConsumeQueue implements StopWare {
 
     private final byte[] suffixBytes;
 
-    private final ByteBuffer wroteBuffer = ByteBuffer.allocateDirect(ITEM_SIZE);
+    private final ByteBuffer itemBuffer = ByteBuffer.allocateDirect(ITEM_SIZE);
 
-    private final Set<String> topics = new HashSet<>();
+    private final Set<String> topicDirs = new HashSet<>();
 
     // (topic, queueId) -> fileChannel
     private final Map<String, FileChannel> fileChannelMap = new HashMap<>();
@@ -55,15 +56,6 @@ public class ConsumeQueue implements StopWare {
         this.prefixSizeBuffer = ByteBuffer.allocateDirect(4 + 4);
         this.suffixBuffer = ByteBuffer.allocateDirect(120);
         this.suffixBytes = new byte[100];
-    }
-
-    // return processedPhysicalOffset
-    public long recover() throws IOException {
-        //      check data item
-        //      load mem topicQueueTable
-
-        this.topicQueueTable = loadTopicQueueTable();
-        return 0;
     }
 
     // sync invoke
@@ -88,48 +80,44 @@ public class ConsumeQueue implements StopWare {
         setProcessedPhysicalOffset(commitLogWrotePosition);
     }
 
-    // TODO: fix, need record wrotePosition
-    //polish
-    public void write(String topic, int queueId, long queueOffset, long commitLogOffset) throws IOException {
-        // sync write file in (topic + queueId)
+    private void write(String topic, int queueId, long queueOffset, long physicalOffset) throws IOException {
 
-        if (!topics.contains(topic)) {
-            Path dir = Paths.get(Config.getInstance().getConsumerQueueRootDir(), topic);
-            if (!Files.exists(dir)) {
-                Files.createDirectories(dir);
-                topics.add(topic);
-            }
-        }
+        ensureTopicDirExist(topic);
 
-        // get file path by topic and queueId
-        FileChannel fileChannel = fileChannelMap.computeIfAbsent(topic + "|_%_|" + queueId, k -> {
-            Path path = Paths.get(Config.getInstance().getConsumerQueueRootDir(), topic, String.valueOf(queueId));
-            try {
-                return FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.APPEND,
-                        StandardOpenOption.CREATE);
-            } catch (IOException e) {
-                log.error("failed to open fileChannel", e);
-                return null;
-            }
-        });
-        if (fileChannel == null) {
-            throw new IllegalStateException("failed to create file-channel");
-        }
+        FileChannel fileChannel = getFileChannel(topic, queueId);
 
-        // write
-        wroteBuffer.clear();
-        wroteBuffer.putLong(queueOffset);
-        wroteBuffer.putLong(commitLogOffset);
-        wroteBuffer.flip();
-        fileChannel.write(wroteBuffer);
+        itemBuffer.clear();
+        itemBuffer.putLong(queueOffset);
+        itemBuffer.putLong(physicalOffset);
+        itemBuffer.putInt(ChecksumUtil.get(queueOffset, physicalOffset));
+        itemBuffer.flip();
+        fileChannel.write(itemBuffer);
         fileChannel.force(true);
     }
 
-    //----------------------------------------------------
+    // only for testing
+    TopicQueueTable loadTopicQueueTable() throws IOException {
+        return doRecover();
+    }
 
-    private final ByteBuffer loadMemBuffer = ByteBuffer.allocateDirect(ITEM_SIZE);
+    /**
+     * - check data item
+     * - update processedPhysicalOffset
+     * - update mem topicQueueTable
+     *
+     * @return processedPhysicalOffset
+     */
+    public long recover() throws IOException {
+        this.topicQueueTable = doRecover();
+        return getProcessedPhysicalOffset();
+    }
 
-    public TopicQueueTable loadTopicQueueTable() throws IOException {
+    /**
+     * - check data item
+     * - update processedPhysicalOffset
+     * - update mem topicQueueTable
+     */
+    private TopicQueueTable doRecover() throws IOException {
         TopicQueueTable table = new TopicQueueTable();
 
         File dir = new File(Config.getInstance().getConsumerQueueRootDir());
@@ -138,7 +126,6 @@ public class ConsumeQueue implements StopWare {
             return table;
         }
         for (File topicDir : topicDirs) {
-            String topicName = topicDir.getName();
             if (!topicDir.isDirectory()) {
                 continue;
             }
@@ -146,29 +133,82 @@ public class ConsumeQueue implements StopWare {
             if (queueFiles == null || queueFiles.length == 0) {
                 continue;
             }
+            String topicName = topicDir.getName();
             for (File queueFile : queueFiles) {
                 int queueId = Integer.parseInt(queueFile.getName());
-                FileChannel fileChannel = FileChannel.open(queueFile.toPath(), StandardOpenOption.READ);
-
-                ByteBuffer byteBuffer = loadMemBuffer;
-
-                for (int position = 0; ; ) {
-                    byteBuffer.clear();
-                    int readBytes = fileChannel.read(byteBuffer, position);
-                    if (readBytes <= 0) {
-                        break;
-                    }
-                    byteBuffer.flip();
-                    long queueOffset = byteBuffer.getLong();
-                    long phyOffset = byteBuffer.getLong();
-                    table.put(topicName, queueId, queueOffset, phyOffset);
-                    log.debug("consumeQueue loadTopicQueueTable, put: ({}, {} -> {}, {})",
-                            topicName, queueId, queueOffset, phyOffset);
-                    position += readBytes;
-                }
+                checkDataAndUpdateTopicQueueTable(table, topicName, queueId);
             }
         }
         return table;
+    }
+
+    private void checkDataAndUpdateTopicQueueTable(
+            TopicQueueTable table, String topicName, int queueId) throws IOException {
+
+        FileChannel fileChannel = getFileChannel(topicName, queueId);
+        ByteBuffer byteBuffer = itemBuffer;
+        for (int position = 0; ; ) {
+            byteBuffer.clear();
+            int readBytes = fileChannel.read(byteBuffer, position);
+            if (readBytes <= 0) {
+                break;
+            }
+
+            byteBuffer.flip();
+            if (byteBuffer.remaining() < 8) {
+                break;
+            }
+            long queueOffset = byteBuffer.getLong();
+            if (byteBuffer.remaining() < 8) {
+                break;
+            }
+            long phyOffset = byteBuffer.getLong();
+            if (byteBuffer.remaining() < 4) {
+                break;
+            }
+            int checkSum = byteBuffer.getInt();
+            if (!ChecksumUtil.check(queueOffset, phyOffset, checkSum)) {
+               break;
+            }
+
+            setProcessedPhysicalOffset(phyOffset);
+
+            table.put(topicName, queueId, queueOffset, phyOffset);
+            log.debug("topicQueueTable, put: ({}, {} -> {}, {})",
+                    topicName, queueId, queueOffset, phyOffset);
+
+            position += readBytes;
+        }
+    }
+
+    private void ensureTopicDirExist(String topic) throws IOException {
+        if (!topicDirs.contains(topic)) {
+            Path dir = Paths.get(Config.getInstance().getConsumerQueueRootDir(), topic);
+            if (!Files.exists(dir)) {
+                Files.createDirectories(dir);
+                topicDirs.add(topic);
+            }
+        }
+    }
+
+    private FileChannel getFileChannel(String topic, int queueId) {
+        FileChannel fileChannel = fileChannelMap.computeIfAbsent(buildKey(topic, queueId), k -> {
+            File file = new File(Config.getInstance().getConsumerQueueRootDir() + "/" + topic + "/" + queueId);
+            try {
+                return new RandomAccessFile(file, "rw").getChannel();
+            } catch (IOException e) {
+                log.error("failed to get fileChannel", e);
+                return null;
+            }
+        });
+        if (fileChannel == null) {
+            throw new IllegalStateException("failed to create file-channel");
+        }
+        return fileChannel;
+    }
+
+    private String buildKey(String topic, int queueId) {
+        return topic + "|_%_|" + queueId;
     }
 
     @Override
