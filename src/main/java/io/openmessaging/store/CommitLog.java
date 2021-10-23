@@ -83,9 +83,10 @@ public class CommitLog {
             int checksum = itemBuffer.getInt();
 
             itemBuffer.rewind();
-            byte[] logItemBytes = new byte[logSize];
+            //polish: reuse
+            byte[] logItemBytes = new byte[logSize - 4];
             itemBuffer.get(logItemBytes);
-            int expectedChecksum = ChecksumUtil.get(logItemBytes, 0, logSize);
+            int expectedChecksum = ChecksumUtil.get(logItemBytes, 0, logSize - 4);
 
             if (!Objects.equals(checksum, expectedChecksum)) {
                 log.warn("find dirty tail data");

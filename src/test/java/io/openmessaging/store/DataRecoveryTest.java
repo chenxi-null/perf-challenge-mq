@@ -25,15 +25,19 @@ public class DataRecoveryTest extends BaseTest {
         int logNum1 = writeTestData(mq);
         // and: sync logic data1
         consumeQueue.syncFromCommitLog();
+        assertEquals(logNum1, store.getTopicQueueTable().getMsgNum());
         assertEquals(logNum1, consumeQueue.loadTopicQueueTable().getMsgNum());
         // and: write physical data2
         int logNum2 = writeTestData2(mq);
         // and: shutdown before sync logic data2
+        assertEquals(logNum1 + logNum2, store.getTopicQueueTable().getMsgNum());
         assertEquals(logNum1, consumeQueue.loadTopicQueueTable().getMsgNum());
         mq.stop();
 
         // when: restart
         mq = new DefaultMessageQueueImpl();
+        consumeQueue = mq.getStore().getConsumeQueue();
+        mq.getStore().getTopicQueueTable();
 
         // then: check physical position - [data1, data2]
         // and: check logic position - [data1, data2]
