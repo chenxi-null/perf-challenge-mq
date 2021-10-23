@@ -57,6 +57,7 @@ public class CommitLog {
     // 4 /* checksum */;
     //
     public void recover(long maxPhysicalOffset) throws IOException {
+        log.info("recover, maxPhysicalOffset: {}", maxPhysicalOffset);
 
         long phyOffset = maxPhysicalOffset;
         while (true) {
@@ -150,8 +151,6 @@ public class CommitLog {
         setWrotePosition(nextPhysicalOffset);
         log.debug("wrote, physicalOffset: {}, nextPhysicalOffset: {}", startPhysicalOffset, nextPhysicalOffset);
     }
-
-    //----------------------------------------------------
 
     /**
      * @return nextPhysicalOffset

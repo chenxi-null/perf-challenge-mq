@@ -142,6 +142,7 @@ public class ConsumeQueue implements StopWare {
 
     private void checkDataAndUpdateTopicQueueTable(
             TopicQueueTable table, String topicName, int queueId) throws IOException {
+        log.debug("checkDataAndUpdateTopicQueueTable, topic: {}, queueId: {}", topicName, queueId);
 
         FileChannel fileChannel = getFileChannel(topicName, queueId);
         ByteBuffer byteBuffer = itemBuffer;

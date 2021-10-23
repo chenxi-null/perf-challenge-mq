@@ -82,7 +82,6 @@ public class Store implements StopWare {
     //                               cq, log, table
     //
     public void start() throws IOException {
-        // TODO:
         dataRecovery();
 
         consumeQueue.syncFromCommitLog();
