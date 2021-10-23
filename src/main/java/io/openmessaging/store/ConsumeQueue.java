@@ -38,8 +38,6 @@ public class ConsumeQueue implements StopWare {
 
     private final ByteBuffer suffixBuffer;
 
-    private final byte[] suffixBytes;
-
     private final ByteBuffer itemBuffer = ByteBuffer.allocateDirect(ITEM_SIZE);
 
     private final Set<String> topicDirs = new HashSet<>();
@@ -54,8 +52,8 @@ public class ConsumeQueue implements StopWare {
     public ConsumeQueue(Store store) {
         this.store = store;
         this.prefixSizeBuffer = ByteBuffer.allocateDirect(4 + 4);
+        // TODO:
         this.suffixBuffer = ByteBuffer.allocateDirect(120);
-        this.suffixBytes = new byte[100];
     }
 
     // sync invoke
@@ -66,7 +64,7 @@ public class ConsumeQueue implements StopWare {
                 processedPhyOffset, commitLogWrotePosition);
         while (processedPhyOffset < commitLogWrotePosition) {
             CommitLog.LogicItemInfo info = store.getCommitLog().getLogicItemInfo(processedPhyOffset,
-                    prefixSizeBuffer, suffixBuffer, suffixBytes);
+                    prefixSizeBuffer, suffixBuffer);
 
             // write into consumeQueue
             write(info.getTopic(), info.getQueueId(), info.getQueueOffset(), processedPhyOffset);

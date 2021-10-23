@@ -15,8 +15,10 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+// polish: log item content - can remove some content?
 public class CommitLog {
 
     private static final Logger log = LoggerFactory.getLogger(CommitLog.class);
@@ -25,10 +27,13 @@ public class CommitLog {
 
     private final FileChannel fileChannel;
 
+    private volatile long wrotePosition = 0;
+
     private final ByteBuffer wroteBuffer =
             ByteBuffer.allocateDirect(Config.getInstance().getBatchWriteCommitLogMaxDataSize());
 
-    private volatile long wrotePosition = 0;
+    private final ByteBuffer itemBuffer =
+            ByteBuffer.allocate(200 + Config.getInstance().getOneWriteMaxDataSize());
 
     public CommitLog(Store store) throws IOException {
         this.store = store;
@@ -39,11 +44,59 @@ public class CommitLog {
         this.fileChannel = new RandomAccessFile(commitLogPath.toFile(), "rw").getChannel();
     }
 
-    public void recover(long maxPhysicalOffset) {
-        // TODO:
-        //      check data item by crc
-        //      update wrotePosition
-        //      update mem topicQueueTable
+    // - check data item by checksum
+    // - update mem topicQueueTable
+    // - update wrotePosition
+    //
+    // 4 /* logSize */
+    // 4 /* msgSize */
+    // msgSize /* data */
+    // 4 /* queueId */
+    // 8 /* queueOffset */
+    // topicBytes.length
+    // 4 /* checksum */;
+    //
+    public void recover(long maxPhysicalOffset) throws IOException {
+
+        long phyOffset = maxPhysicalOffset;
+        while (true) {
+            fileChannel.position(phyOffset);
+            itemBuffer.clear();
+            int readBytes = fileChannel.read(itemBuffer);
+            if (readBytes <= 0) {
+                break;
+            }
+
+            itemBuffer.flip();
+            int logSize = itemBuffer.getInt();
+            int msgSize = itemBuffer.getInt();
+            itemBuffer.position(itemBuffer.position() + msgSize);
+            int queueId = itemBuffer.getInt();
+            long queueOffset = itemBuffer.getLong();
+
+            int topicLength = logSize - 4 - 4 - msgSize - 4 - 8 - 4;
+            byte[] topicBytes = new byte[topicLength];
+            itemBuffer.get(topicBytes);
+            String topic = new String(topicBytes, StandardCharsets.UTF_8);
+
+            int checksum = itemBuffer.getInt();
+
+            itemBuffer.rewind();
+            byte[] logItemBytes = new byte[logSize];
+            itemBuffer.get(logItemBytes);
+            int expectedChecksum = ChecksumUtil.get(logItemBytes, 0, logSize);
+
+            if (!Objects.equals(checksum, expectedChecksum)) {
+                log.warn("find dirty tail data");
+                break;
+            }
+
+            this.store.getTopicQueueTable().put(topic, queueId, queueOffset, phyOffset);
+
+            phyOffset += logSize;
+        }
+
+        setWrotePosition(phyOffset);
     }
 
     // sync invoke
@@ -105,7 +158,9 @@ public class CommitLog {
      */
     public long appendByteBuffer(ByteBuffer byteBuffer, long physicalOffset,
                                  String topic, int queueId, long queueOffset, ByteBuffer data) {
-        byte[] topicBytes = topic.getBytes(StandardCharsets.ISO_8859_1);
+        byte[] topicBytes = topic.getBytes(StandardCharsets.UTF_8);
+
+        int startPosition = byteBuffer.position();
 
         int msgSize = data.remaining();
         Util.assertTrue(msgSize <= Config.getInstance().getOneWriteMaxDataSize(),
@@ -123,7 +178,17 @@ public class CommitLog {
         byteBuffer.putInt(queueId);
         byteBuffer.putLong(queueOffset);
         byteBuffer.put(topicBytes);
-        int checksum = ChecksumUtil.get(byteBuffer.array(), 0, byteBuffer.position());
+
+        // make buffer ready to get
+        byteBuffer.limit(byteBuffer.position());
+        byteBuffer.position(startPosition);
+        byte[] bytes = new byte[logSize];
+        byteBuffer.get(bytes, 0, logSize - 4);
+        int checksum = ChecksumUtil.get(bytes, 0, byteBuffer.position());
+
+        // restore buffer, make it ready to put again
+        byteBuffer.clear();
+        byteBuffer.position(logSize - 4);
         byteBuffer.putInt(checksum);
 
         return physicalOffset + logSize;
@@ -150,32 +215,33 @@ public class CommitLog {
         }
     }
 
-    // polish: log item content, can remove some content
     //+ 4 /* logSize */
     //+ 4 /* msgSize */
     //+ msgSize
     //+ 4 /* queueId */
     //+ 8 /* queueOffset */
     //+ topicBytes.length;
-    public LogicItemInfo getLogicItemInfo(long phyOffset, ByteBuffer prefixSizeBuffer,
-                                          ByteBuffer suffixBuffer, byte[] suffixBytes) throws IOException {
-        SizeInfo sizeInfo = readSize(phyOffset, prefixSizeBuffer);
+    //+ 4 /* checksum */
+    public LogicItemInfo getLogicItemInfo(long phyOffset, ByteBuffer itemHeadSizeBuffer,
+                                          ByteBuffer itemTailBuffer) throws IOException {
+        SizeInfo sizeInfo = readSize(phyOffset, itemHeadSizeBuffer);
         int logSize = sizeInfo.logSize;
         int msgSize = sizeInfo.msgSize;
 
-        suffixBuffer.clear();
+        itemTailBuffer.clear();
         int capacity = logSize - 4 - 4 - msgSize;
-        suffixBuffer.limit(capacity);
-        fileChannel.read(suffixBuffer, phyOffset + 4 + 4 + msgSize);
+        itemTailBuffer.limit(capacity);
+        fileChannel.read(itemTailBuffer, phyOffset + 4 + 4 + msgSize);
 
-        suffixBuffer.flip();
-        int queueId = suffixBuffer.getInt();
-        long queueOffset = suffixBuffer.getLong();
+        itemTailBuffer.flip();
+        int queueId = itemTailBuffer.getInt();
+        long queueOffset = itemTailBuffer.getLong();
 
-        int topicBytesNum = capacity - 4 - 8;
+        int topicBytesNum = capacity - 4 - 8 - 4;
+        //polish: reuse this byte array
         byte[] topicBytes = new byte[topicBytesNum];
-        suffixBuffer.get(topicBytes);
-        String topic = new String(topicBytes, 0, topicBytesNum, StandardCharsets.ISO_8859_1);
+        itemTailBuffer.get(topicBytes);
+        String topic = new String(topicBytes, 0, topicBytesNum, StandardCharsets.UTF_8);
 
         long nextPhyOffset = phyOffset + logSize;
         return new LogicItemInfo(topic, queueId, queueOffset, nextPhyOffset);
