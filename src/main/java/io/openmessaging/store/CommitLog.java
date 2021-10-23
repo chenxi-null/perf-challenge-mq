@@ -2,6 +2,7 @@ package io.openmessaging.store;
 
 import io.openmessaging.Config;
 import io.openmessaging.DefaultMessageQueueImpl;
+import io.openmessaging.util.ChecksumUtil;
 import io.openmessaging.util.FileUtil;
 import io.openmessaging.util.Util;
 import org.slf4j.Logger;
@@ -16,24 +17,13 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * data struct
- * <p>
- * - msgSize
- * - body
- * - queueId
- * - queueOffset
- * - topic
- */
 public class CommitLog {
 
     private static final Logger log = LoggerFactory.getLogger(CommitLog.class);
 
     private final Store store;
 
-    private final FileChannel writeFileChannel;
-
-    private final FileChannel readFileChannel;
+    private final FileChannel fileChannel;
 
     private final ByteBuffer wroteBuffer =
             ByteBuffer.allocateDirect(Config.getInstance().getBatchWriteCommitLogMaxDataSize());
@@ -46,8 +36,14 @@ public class CommitLog {
         Path commitLogPath = Config.getInstance().getCommitLogPath();
         FileUtil.createFileIfNotExists(commitLogPath);
 
-        this.writeFileChannel = new RandomAccessFile(commitLogPath.toFile(), "rw").getChannel();
-        this.readFileChannel = writeFileChannel;
+        this.fileChannel = new RandomAccessFile(commitLogPath.toFile(), "rw").getChannel();
+    }
+
+    public void recover(long maxPhysicalOffset) {
+        // TODO:
+        //      check data item by crc
+        //      update wrotePosition
+        //      update mem topicQueueTable
     }
 
     // sync invoke
@@ -88,9 +84,9 @@ public class CommitLog {
         }
 
         wroteBuffer.flip();
-        writeFileChannel.position(startPhysicalOffset);
-        writeFileChannel.write(wroteBuffer);
-        writeFileChannel.force(true);
+        fileChannel.position(startPhysicalOffset);
+        fileChannel.write(wroteBuffer);
+        fileChannel.force(true);
 
         for (Item item : items) {
             updateTopicQueueTable(item.getTopic(), item.getQueueId(), item.getQueueOffset(), item.getPhysicalOffset());
@@ -104,11 +100,6 @@ public class CommitLog {
 
     //----------------------------------------------------
 
-    // TODO:
-    private static final int logSizeBytesNum = 4;
-
-    private static final int msgSizeBytesNum = 4;
-
     /**
      * @return nextPhysicalOffset
      */
@@ -117,21 +108,25 @@ public class CommitLog {
         byte[] topicBytes = topic.getBytes(StandardCharsets.ISO_8859_1);
 
         int msgSize = data.remaining();
-        Util.assertTrue(msgSize <= Config.getInstance().getOneWriteMaxDataSize(), "unexpected msgSize: " + msgSize);
-        int bufferSize = logSizeBytesNum /* logSize */
-                + msgSizeBytesNum /* msgSize */
+        Util.assertTrue(msgSize <= Config.getInstance().getOneWriteMaxDataSize(),
+                "unexpected msgSize: " + msgSize);
+        int logSize = 4 /* logSize */
+                + 4 /* msgSize */
                 + msgSize /* data */
                 + 4 /* queueId */
                 + 8 /* queueOffset */
-                + topicBytes.length;
-        byteBuffer.putInt(bufferSize);
+                + topicBytes.length
+                + 4 /* checksum */;
+        byteBuffer.putInt(logSize);
         byteBuffer.putInt(msgSize);
         byteBuffer.put(data);
         byteBuffer.putInt(queueId);
         byteBuffer.putLong(queueOffset);
         byteBuffer.put(topicBytes);
+        int checksum = ChecksumUtil.get(byteBuffer.array(), 0, byteBuffer.position());
+        byteBuffer.putInt(checksum);
 
-        return physicalOffset + bufferSize;
+        return physicalOffset + logSize;
     }
 
     private void updateTopicQueueTable(String topic, int queueId, long queueOffset, long physicalOffset) {
@@ -147,7 +142,7 @@ public class CommitLog {
             buffer = bufferContext.get().getMsgDataBuffer();
             buffer.clear();
             buffer.limit(msgSize);
-            readFileChannel.read(buffer, physicalOffset + 4 + 4);
+            fileChannel.read(buffer, physicalOffset + 4 + 4);
             return buffer;
         } catch (Throwable e) {
             log.error("physicalOffset: {}, msgSize: {}, buffer: {}", physicalOffset, msgSize, buffer, e);
@@ -155,16 +150,15 @@ public class CommitLog {
         }
     }
 
+    // polish: log item content, can remove some content
     //+ 4 /* logSize */
     //+ 4 /* msgSize */
     //+ msgSize
     //+ 4 /* queueId */
     //+ 8 /* queueOffset */
     //+ topicBytes.length;
-
-    // return: topic, queueId, queueOffset and nextPhyOffset
-    public TopicQueueOffsetInfo getLogicItemInfo(long phyOffset, ByteBuffer prefixSizeBuffer,
-                                                 ByteBuffer suffixBuffer, byte[] suffixBytes) throws IOException {
+    public LogicItemInfo getLogicItemInfo(long phyOffset, ByteBuffer prefixSizeBuffer,
+                                          ByteBuffer suffixBuffer, byte[] suffixBytes) throws IOException {
         SizeInfo sizeInfo = readSize(phyOffset, prefixSizeBuffer);
         int logSize = sizeInfo.logSize;
         int msgSize = sizeInfo.msgSize;
@@ -172,7 +166,7 @@ public class CommitLog {
         suffixBuffer.clear();
         int capacity = logSize - 4 - 4 - msgSize;
         suffixBuffer.limit(capacity);
-        readFileChannel.read(suffixBuffer, phyOffset + 4 + 4 + msgSize);
+        fileChannel.read(suffixBuffer, phyOffset + 4 + 4 + msgSize);
 
         suffixBuffer.flip();
         int queueId = suffixBuffer.getInt();
@@ -184,23 +178,16 @@ public class CommitLog {
         String topic = new String(topicBytes, 0, topicBytesNum, StandardCharsets.ISO_8859_1);
 
         long nextPhyOffset = phyOffset + logSize;
-        return new TopicQueueOffsetInfo(topic, queueId, queueOffset, nextPhyOffset);
+        return new LogicItemInfo(topic, queueId, queueOffset, nextPhyOffset);
     }
 
-    public void recover(long maxPhysicalOffset) {
-        // TODO:
-        //      check data item by crc
-        //      update wrotePosition
-        //      update mem topicQueueTable
-    }
-
-    public static class TopicQueueOffsetInfo {
+    public static class LogicItemInfo {
         String topic;
         int queueId;
         long queueOffset;
         long nextPhyOffset;
 
-        public TopicQueueOffsetInfo(String topic, int queueId, long queueOffset, long nextPhyOffset) {
+        public LogicItemInfo(String topic, int queueId, long queueOffset, long nextPhyOffset) {
             this.topic = topic;
             this.queueId = queueId;
             this.queueOffset = queueOffset;
@@ -209,7 +196,7 @@ public class CommitLog {
 
         @Override
         public String toString() {
-            return "TopicQueueOffsetInfo{" +
+            return "LogicItemInfo{" +
                     "topic='" + topic + '\'' +
                     ", queueId=" + queueId +
                     ", queueOffset=" + queueOffset +
@@ -234,10 +221,12 @@ public class CommitLog {
         }
     }
 
-    // return: logSize and msgSize
+    /**
+     * @return logSize and msgSize
+     */
     private SizeInfo readSize(long physicalOffset, ByteBuffer prefixSizeBuffer) throws IOException {
         prefixSizeBuffer.clear();
-        readFileChannel.read(prefixSizeBuffer, physicalOffset);
+        fileChannel.read(prefixSizeBuffer, physicalOffset);
         prefixSizeBuffer.flip();
         return new SizeInfo(prefixSizeBuffer.getInt(), prefixSizeBuffer.getInt());
     }
@@ -245,7 +234,7 @@ public class CommitLog {
     private int readMsgSize(long physicalOffset) throws IOException {
         ByteBuffer msgSizeBuffer = bufferContext.get().getMsgSizeBuffer();
         msgSizeBuffer.clear();
-        readFileChannel.read(msgSizeBuffer, physicalOffset + 4);
+        fileChannel.read(msgSizeBuffer, physicalOffset + 4);
         msgSizeBuffer.flip();
         return msgSizeBuffer.getInt();
     }

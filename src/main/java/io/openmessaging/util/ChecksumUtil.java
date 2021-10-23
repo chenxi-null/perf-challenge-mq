@@ -6,6 +6,10 @@ package io.openmessaging.util;
  */
 public class ChecksumUtil {
 
+    public static int get(byte[] bytes, int offset, int length) {
+        return 0;
+    }
+
     public static int get(long queueOffset, long physicalOffset) {
         return 0;
     }

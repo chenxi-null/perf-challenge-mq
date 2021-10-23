@@ -65,7 +65,7 @@ public class ConsumeQueue implements StopWare {
         log.debug("syncFromCommitLog starting, processedPhyOffset: {}, commitLogWrotePosition: {}",
                 processedPhyOffset, commitLogWrotePosition);
         while (processedPhyOffset < commitLogWrotePosition) {
-            CommitLog.TopicQueueOffsetInfo info = store.getCommitLog().getLogicItemInfo(processedPhyOffset,
+            CommitLog.LogicItemInfo info = store.getCommitLog().getLogicItemInfo(processedPhyOffset,
                     prefixSizeBuffer, suffixBuffer, suffixBytes);
 
             // write into consumeQueue
