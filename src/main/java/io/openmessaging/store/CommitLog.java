@@ -178,21 +178,19 @@ public class CommitLog {
         byteBuffer.putLong(queueOffset);
         byteBuffer.put(topicBytes);
 
-        /*
+        int pos = byteBuffer.position();
+
         // make buffer ready to get
-        byteBuffer.limit(byteBuffer.position());
+        byteBuffer.limit(pos);
         byteBuffer.position(startPosition);
-        byte[] bytes = new byte[logSize];
+        byte[] bytes = new byte[logSize - 4];
         byteBuffer.get(bytes, 0, logSize - 4);
-        int checksum = ChecksumUtil.get(bytes, 0, byteBuffer.position());
+        int checksum = ChecksumUtil.get(bytes, 0, bytes.length);
 
         // restore buffer, make it ready to put again
         byteBuffer.clear();
-        byteBuffer.position(logSize - 4);
+        byteBuffer.position(pos);
         byteBuffer.putInt(checksum);
-         */
-
-        byteBuffer.putInt(0);
 
         return physicalOffset + logSize;
     }
