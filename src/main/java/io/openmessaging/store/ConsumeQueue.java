@@ -34,9 +34,9 @@ public class ConsumeQueue implements StopWare {
 
     private final Store store;
 
-    private final ByteBuffer prefixSizeBuffer;
+    private final ByteBuffer logItemHeadSizeBuffer;
 
-    private final ByteBuffer suffixBuffer;
+    private final ByteBuffer logItemTailBuffer;
 
     private final ByteBuffer itemBuffer = ByteBuffer.allocateDirect(ITEM_SIZE);
 
@@ -51,9 +51,9 @@ public class ConsumeQueue implements StopWare {
 
     public ConsumeQueue(Store store) {
         this.store = store;
-        this.prefixSizeBuffer = ByteBuffer.allocateDirect(4 + 4);
-        // TODO:
-        this.suffixBuffer = ByteBuffer.allocateDirect(120);
+        this.logItemHeadSizeBuffer = ByteBuffer.allocateDirect(4 + 4);
+        // buffer length: max topic length + 16
+        this.logItemTailBuffer = ByteBuffer.allocateDirect(120);
     }
 
     // sync invoke
@@ -64,7 +64,7 @@ public class ConsumeQueue implements StopWare {
                 processedPhyOffset, commitLogWrotePosition);
         while (processedPhyOffset < commitLogWrotePosition) {
             CommitLog.LogicItemInfo info = store.getCommitLog().getLogicItemInfo(processedPhyOffset,
-                    prefixSizeBuffer, suffixBuffer);
+                    logItemHeadSizeBuffer, logItemTailBuffer);
 
             // write into consumeQueue
             write(info.getTopic(), info.getQueueId(), info.getQueueOffset(), processedPhyOffset);
@@ -167,6 +167,7 @@ public class ConsumeQueue implements StopWare {
             }
             int checkSum = byteBuffer.getInt();
             if (!ChecksumUtil.check(queueOffset, phyOffset, checkSum)) {
+                log.warn("occur item tail dirty data");
                break;
             }
 
