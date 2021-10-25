@@ -34,6 +34,8 @@ public class CommitLog {
     private final ByteBuffer itemBuffer =
             ByteBuffer.allocate(200 + Config.getInstance().getOneWriteMaxDataSize());
 
+    private final byte[] topicBytes = new byte[Config.getInstance().getTopicMaxByteNum()];
+
     public CommitLog(Store store) throws IOException {
         this.store = store;
 
@@ -238,9 +240,7 @@ public class CommitLog {
         long queueOffset = itemTailBuffer.getLong();
 
         int topicBytesNum = capacity - 4 - 8 - 4;
-        //polish: reuse this byte array
-        byte[] topicBytes = new byte[topicBytesNum];
-        itemTailBuffer.get(topicBytes);
+        itemTailBuffer.get(topicBytes, 0, topicBytesNum);
         String topic = new String(topicBytes, 0, topicBytesNum, StandardCharsets.UTF_8);
 
         long nextPhyOffset = phyOffset + logSize;
