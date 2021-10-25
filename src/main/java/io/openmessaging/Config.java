@@ -73,9 +73,9 @@ public class Config {
         return batchWriteTimeWindowCheckInternal;
     }
 
-    private int batchWriteTimeWindowCheckInternal = 10;
+    private int batchWriteTimeWindowCheckInternal = 2;
 
-    private int batchWriteWaitTimeThreshold = 5;
+    private int batchWriteWaitTimeThreshold = 4;
 
     private int batchWriteThreadSizeThreshold = 30;
 
