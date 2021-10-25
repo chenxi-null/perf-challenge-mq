@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-// polish: log item content - can remove some content?
 public class CommitLog {
 
     private static final Logger log = LoggerFactory.getLogger(CommitLog.class);
@@ -59,6 +58,7 @@ public class CommitLog {
     public void recover(long maxPhysicalOffset) throws IOException {
         log.info("recover, maxPhysicalOffset: {}", maxPhysicalOffset);
 
+        byte[] topicBytes = new byte[Config.getInstance().getTopicMaxByteLength()];
         long phyOffset = maxPhysicalOffset;
         while (true) {
             fileChannel.position(phyOffset);
@@ -76,9 +76,8 @@ public class CommitLog {
             long queueOffset = itemBuffer.getLong();
 
             int topicLength = logSize - 4 - 4 - msgSize - 4 - 8 - 4;
-            byte[] topicBytes = new byte[topicLength];
-            itemBuffer.get(topicBytes);
-            String topic = new String(topicBytes, StandardCharsets.UTF_8);
+            itemBuffer.get(topicBytes, 0, topicLength);
+            String topic = new String(topicBytes, 0, topicLength, StandardCharsets.UTF_8);
 
             int checksum = itemBuffer.getInt();
 

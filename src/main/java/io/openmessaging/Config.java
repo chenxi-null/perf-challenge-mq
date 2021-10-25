@@ -65,17 +65,13 @@ public class Config {
 
     //----------------------------------------------------
 
-    public void setBatchWriteTimeWindowCheckInternal(int batchWriteTimeWindowCheckInternal) {
-        this.batchWriteTimeWindowCheckInternal = batchWriteTimeWindowCheckInternal;
+    private int topicMaxByteLength = 100;
+
+    public int getTopicMaxByteLength() {
+        return topicMaxByteLength;
     }
 
-    public int getBatchWriteTimeWindowCheckInternal() {
-        return batchWriteTimeWindowCheckInternal;
-    }
-
-    private int batchWriteTimeWindowCheckInternal = 2;
-
-    private int batchWriteWaitTimeThreshold = 4;
+    //----------------------------------------------------
 
     private int batchWriteThreadSizeThreshold = 30;
 
@@ -84,6 +80,10 @@ public class Config {
     private int batchWriteMemBufferSizeThreshold = (64 * 4 - 17) * 1024;
 
     private int batchWriteCommitLogMaxDataSize;
+
+    private int batchWriteTimeWindowCheckInternal = 2;
+
+    private int batchWriteWaitTimeThreshold = 4;
 
     private void updateBatchWriteCommitLogMaxDataSize() {
         this. batchWriteCommitLogMaxDataSize = batchWriteMemBufferSizeThreshold + 2 * oneWriteMaxDataSize;
@@ -125,6 +125,14 @@ public class Config {
 
     public void setBatchWriteThreadSizeThreshold(int batchWriteThreadSizeThreshold) {
         this.batchWriteThreadSizeThreshold = batchWriteThreadSizeThreshold;
+    }
+
+    public void setBatchWriteTimeWindowCheckInternal(int batchWriteTimeWindowCheckInternal) {
+        this.batchWriteTimeWindowCheckInternal = batchWriteTimeWindowCheckInternal;
+    }
+
+    public int getBatchWriteTimeWindowCheckInternal() {
+        return batchWriteTimeWindowCheckInternal;
     }
 
     //----------------------------------------------------
