@@ -58,7 +58,8 @@ public class CommitLog {
     public void recover(long maxPhysicalOffset) throws IOException {
         log.info("recover, maxPhysicalOffset: {}", maxPhysicalOffset);
 
-        byte[] topicBytes = new byte[Config.getInstance().getTopicMaxByteLength()];
+        byte[] topicBytes = new byte[Config.getInstance().getTopicMaxByteNum()];
+        byte[] logItemBytes = new byte[Config.getInstance().getLogItemMaxByteNum()];
         long phyOffset = maxPhysicalOffset;
         while (true) {
             fileChannel.position(phyOffset);
@@ -82,9 +83,7 @@ public class CommitLog {
             int checksum = itemBuffer.getInt();
 
             itemBuffer.rewind();
-            //polish: reuse
-            byte[] logItemBytes = new byte[logSize - 4];
-            itemBuffer.get(logItemBytes);
+            itemBuffer.get(logItemBytes, 0, logSize - 4);
             int expectedChecksum = ChecksumUtil.get(logItemBytes, 0, logSize - 4);
 
             if (!Objects.equals(checksum, expectedChecksum)) {

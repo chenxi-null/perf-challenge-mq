@@ -65,10 +65,21 @@ public class Config {
 
     //----------------------------------------------------
 
-    private int topicMaxByteLength = 100;
+    private int topicMaxByteNum = 100;
 
-    public int getTopicMaxByteLength() {
-        return topicMaxByteLength;
+    // 4 /* logSize */
+    // 4 /* msgSize */
+    // msgSize /* data */
+    // 4 /* queueId */
+    // 8 /* queueOffset */
+    // topicBytes.length
+    // 4 /* checksum */;
+    public int getLogItemMaxByteNum() {
+        return 4 + 4 + getOneWriteMaxDataSize() + 4 + 8 + getTopicMaxByteNum() + 4;
+    }
+
+    public int getTopicMaxByteNum() {
+        return topicMaxByteNum;
     }
 
     //----------------------------------------------------
