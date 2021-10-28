@@ -65,7 +65,7 @@ public class Config {
 
     //----------------------------------------------------
 
-    private int topicMaxByteNum = 100;
+    private final int topicMaxByteNum = 100;
 
     // 4 /* logSize */
     // 4 /* msgSize */
@@ -152,5 +152,23 @@ public class Config {
 
     public static Config getInstance() {
         return instance;
+    }
+
+    //----------------------------------------------------
+
+    public static final long heapSize = 60L * 1024 * 1024 * 1024;
+
+    public String getPmemMsgHeapPath() {
+        return "todo";
+    }
+
+    public long getPmemMsgHeapSize() {
+        return heapSize;
+    }
+
+    public String getPmemIndexHeapPath() {
+    }
+
+    public long getPmemIndexHeapSize() {
     }
 }

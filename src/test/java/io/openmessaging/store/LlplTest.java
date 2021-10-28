@@ -11,15 +11,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 public class LlplTest {
 
-    /****************************
-     * This function writes the "Hello..." string to persistent-memory.
-     *****************************/
-    public void write_hello_string (byte[] input, Heap h, int size)
-    {
+    public void write_hello_string(byte[] input, Heap h, int size) {
         // block allocation (transactional allocation)
         MemoryBlock newBlock = h.allocateMemoryBlock(size, true);
 
-        //Attached the newBllock to the root address
+        //Attached the newBlock to the root address
         h.setRoot(newBlock.handle());
 
         // Write byte array (input) to newBlock @ offset 0 (on both) for 26 bytes
@@ -29,15 +25,10 @@ public class LlplTest {
         newBlock.flush();
 
         //Convert byte array (input) to String format and write to console
-        System.out.printf("\nWrite the (%s) string to persistent-memory.\n",new String(input));
-        return;
+        System.out.printf("\nWrite the (%s) string to persistent-memory.\n", new String(input));
     }
 
-    /****************************
-     * This function reads the "Hello..." string from persistent-memory.
-     *****************************/
-    public String read_hello_string(Heap h, int size)
-    {
+    public String read_hello_string(Heap h, int size) {
         // Allocate buffer for string
         // To retrieve byte array from persistent heap
         byte[] output = new byte[size];
@@ -56,20 +47,20 @@ public class LlplTest {
 
         //Convert byte array (output) to String format and write to console
         String msg = new String(output);
-        System.out.printf("\nRead the (%s) string from persistent-memory.\n",msg);
+        System.out.printf("\nRead the (%s) string from persistent-memory.\n", msg);
         return msg;
     }
 
     @Test
-    public void main0 () {
+    public void main0() {
         String option = "0";
         byte[] input;
         int size;  // String length
 
         // Define Heap
-        String path = "./persistent_heap";
+        String path = "./output/pmem/persistent_heap";
         boolean initialized = Heap.exists(path);
-        Heap h = initialized ? Heap.openHeap(path) : Heap.createHeap(path, 1024*1024*16L);
+        Heap h = initialized ? Heap.openHeap(path) : Heap.createHeap(path, 1024 * 1024 * 16L);
 
         //Initialize the msg string
         String msg = "Hello Persistent Memory!!!";
@@ -86,5 +77,5 @@ public class LlplTest {
         String msgRead = read_hello_string(h, size);
 
         assertEquals(msgRead, msg);
-    } 	// End of main function
+    }    // End of main function
 }

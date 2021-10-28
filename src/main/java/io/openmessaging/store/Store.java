@@ -33,6 +33,30 @@ import java.util.concurrent.TimeUnit;
 //      update wrotePosition
 //      update mem topicQueueTable
 //
+// ----
+//
+// write:
+//    - select storage-space
+//    - write pmem & write ssd
+//    - update memTable
+//
+// read:
+//    - query memTable, route to corresponding storage-space
+//    - read from pmem & ssd
+//
+// data recovery:
+//    - recover ssd: consumeQueue, commitLog
+//    - recover pmem: don't need to recover if using llpl tx
+//
+// convention:
+//  msg data in a queue is ordered by [ssd, pmem]
+//
+// pmem data storage structure:
+//    msg: one msg one memory block
+//
+//    index(cq): handle position of memory block (index of msg)
+//
+//
 public class Store implements StopWare {
 
     private static final Logger log = LoggerFactory.getLogger(Store.class);
@@ -114,10 +138,12 @@ public class Store implements StopWare {
     }
 
     public long write(String topic, int queueId, ByteBuffer data) throws IOException, InterruptedException {
+        // TODO: selector
         return commitLogProcessor.write(topic, queueId, data);
     }
 
     public ByteBuffer getData(String topic, int queueId, long offset) throws IOException {
+        // TODO: selector
         long commitLogOffset = getTopicQueueTable().getPhyOffset(topic, queueId, offset);
         if (commitLogOffset < 0) {
             return null;
