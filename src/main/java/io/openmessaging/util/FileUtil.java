@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * @author chenxi20
@@ -17,6 +18,10 @@ public class FileUtil {
         }
     }
 
+    public static void createDirIfNotExists(String strPath) throws IOException {
+        createDirIfNotExists(Paths.get(strPath));
+    }
+
     public static void createDirIfNotExists(Path path) throws IOException {
         if (!Files.exists(path)) {
             Files.createDirectory(path);
@@ -28,6 +33,10 @@ public class FileUtil {
             return file.delete();
         }
         return false;
+    }
+
+    public static boolean safeDeleteDirectory(String strDir) {
+        return safeDeleteDirectory(new File(strDir));
     }
 
     public static boolean safeDeleteDirectory(File dir) {

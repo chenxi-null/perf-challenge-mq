@@ -156,19 +156,36 @@ public class Config {
 
     //----------------------------------------------------
 
-    public static final long heapSize = 60L * 1024 * 1024 * 1024;
+    public long pmemMsgHeapSize = 60L * 1024 * 1024 * 1024;
 
-    public String getPmemMsgHeapPath() {
-        return "todo";
+    // TODO:
+    public String pmemDir = "./output/pmem";
+
+    public String getPmemDir() {
+        return pmemDir;
     }
 
-    public long getPmemMsgHeapSize() {
-        return heapSize;
+    public void setPmemDir(String pmemDir) {
+        this.pmemDir = pmemDir;
+    }
+
+    public String getPmemMsgHeapPath() {
+        return getPmemDir() + "/msg_heap";
     }
 
     public String getPmemIndexHeapPath() {
+        return "";
+    }
+
+    public long getPmemMsgHeapSize() {
+        return pmemMsgHeapSize;
     }
 
     public long getPmemIndexHeapSize() {
+        return 0;
+    }
+
+    public void setPmemMsgHeapSize(long pmemMsgHeapSize) {
+        this.pmemMsgHeapSize = pmemMsgHeapSize;
     }
 }

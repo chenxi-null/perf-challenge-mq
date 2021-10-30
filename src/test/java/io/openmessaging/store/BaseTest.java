@@ -36,10 +36,10 @@ public abstract class BaseTest {
         Config.getInstance().setOneWriteMaxDataSize(100);
         Config.getInstance().setBatchWriteMemBufferSizeThreshold(size + size);
 
-        String testRootDir = "/Users/chenxi20/Downloads/code/chenxi-projects/mq-sample/output/essd/mqx";
+        String testRootDir = "./output/essd/mqx";
         Path testRootDirPath = Paths.get(testRootDir);
         Config.getInstance().setRootDir(testRootDir);
-        System.out.println("reset rootDir");
+        System.out.println("reset rootDir: " + testRootDirPath.toFile().getAbsolutePath());
 
         if (Files.exists(testRootDirPath)) {
             assertTrue(FileUtil.safeDeleteDirectory(new File(testRootDir)));

@@ -61,18 +61,24 @@ public class Store implements StopWare {
 
     private static final Logger log = LoggerFactory.getLogger(Store.class);
 
-    private final CommitLog commitLog;
+    private CommitLog commitLog;
 
-    private final ConsumeQueue consumeQueue;
+    private ConsumeQueue consumeQueue;
 
-    private final ConsumeQueueService consumeQueueService;
+    private ConsumeQueueService consumeQueueService;
 
-    private final CommitLogProcessor commitLogProcessor;
+    private CommitLogProcessor commitLogProcessor;
 
-    private final ScheduledExecutorService consumeQueueSyncScheduledService =
+    private ScheduledExecutorService consumeQueueSyncScheduledService =
             Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("consumeQueueSyncTask"));
 
+    private PmemMsgStoreProcessor pmemMsgStoreProcessor;
+
     public Store() throws IOException {
+        start();
+    }
+
+    private void start() throws IOException {
         FileUtil.createDirIfNotExists(Config.getInstance().getRootDirPath());
 
         this.commitLog = new CommitLog(this);
@@ -81,7 +87,9 @@ public class Store implements StopWare {
 
         this.commitLogProcessor = new CommitLogProcessor(this);
 
-        start();
+        this.pmemMsgStoreProcessor = new PmemMsgStoreProcessor(this);
+        this.pmemMsgStoreProcessor.start();
+        doStart();
     }
 
     // Start and Recover:
@@ -105,7 +113,7 @@ public class Store implements StopWare {
     //  |---------------|------------------|
     //                               cq, log, table
     //
-    public void start() throws IOException {
+    public void doStart() throws IOException {
         dataRecovery();
 
         consumeQueue.syncFromCommitLog();
@@ -161,5 +169,9 @@ public class Store implements StopWare {
 
     public ConsumeQueue getConsumeQueue() {
         return consumeQueue;
+    }
+
+    public PmemMsgStoreProcessor getPmemMsgStoreProcessor() {
+        return pmemMsgStoreProcessor;
     }
 }

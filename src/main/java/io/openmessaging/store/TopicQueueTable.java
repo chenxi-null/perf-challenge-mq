@@ -11,7 +11,10 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class TopicQueueTable {
 
-    // topic-queueId-queueOffset -> phyOffset
+    // topic-queueId, queueOffset -> pmemOffset
+    private final Map<String, Long> pmemOffsets = new ConcurrentHashMap<>();
+
+    // topic-queueId, queueOffset -> phyOffset
     private final Map<String, Long> phyOffsets = new ConcurrentHashMap<>();
 
     // topic-queueId -> maxQueueOffset
@@ -35,6 +38,20 @@ public class TopicQueueTable {
         } finally {
             wroteLock.unlock();
         }
+    }
+
+    public void putByPmem(String topic, int queueId, long queueOffset, long pmemOffset) {
+        wroteLock.lock();
+        try {
+            maxQueueOffsets.put(buildKey(topic, queueId), queueOffset);
+            pmemOffsets.put(buildKey(topic, queueId, queueOffset), pmemOffset);
+        } finally {
+            wroteLock.unlock();
+        }
+    }
+
+    public long getPmemOffset(String topic, int queueId, long queueOffset) {
+        return pmemOffsets.getOrDefault(buildKey(topic, queueId, queueOffset), -1L);
     }
 
     public long getPhyOffset(String topic, int queueId, long queueOffset) {
