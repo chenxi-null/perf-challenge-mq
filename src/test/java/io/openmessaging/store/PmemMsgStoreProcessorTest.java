@@ -25,7 +25,6 @@ class PmemMsgStoreProcessorTest extends BaseTest {
         System.out.println("clear pmemDir: " + pmemDir);
 
         PmemMsgStoreProcessor p = getMQ().getStore().getPmemMsgStoreProcessor();
-        //System.out.println(">>> p: " + p);
 
         try {
             p.write("-topic-pmem-1", 101, toByteBuffer("-content-pmem-test-1-"));

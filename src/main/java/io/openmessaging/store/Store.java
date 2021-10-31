@@ -3,6 +3,7 @@ package io.openmessaging.store;
 import io.openmessaging.Config;
 import io.openmessaging.common.NamedThreadFactory;
 import io.openmessaging.common.StopWare;
+import io.openmessaging.store.pmem.IndexHeap;
 import io.openmessaging.util.FileUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,6 +75,8 @@ public class Store implements StopWare {
 
     private PmemMsgStoreProcessor pmemMsgStoreProcessor;
 
+    private IndexHeap indexHeap;
+
     public Store() throws IOException {
         start();
     }
@@ -89,6 +92,10 @@ public class Store implements StopWare {
 
         this.pmemMsgStoreProcessor = new PmemMsgStoreProcessor(this);
         this.pmemMsgStoreProcessor.start();
+
+        this.indexHeap = new IndexHeap();
+        indexHeap.start();
+
         doStart();
     }
 
@@ -173,5 +180,9 @@ public class Store implements StopWare {
 
     public PmemMsgStoreProcessor getPmemMsgStoreProcessor() {
         return pmemMsgStoreProcessor;
+    }
+
+    public IndexHeap getIndexHeap() {
+        return indexHeap;
     }
 }

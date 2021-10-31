@@ -22,8 +22,6 @@ public class PmemMsgStoreProcessor implements MsgStoreProcessor {
 
     private Heap msgHeap;
 
-    private Heap indexHeap;
-
     public PmemMsgStoreProcessor(Store store) {
         this.store = store;
     }
@@ -32,19 +30,12 @@ public class PmemMsgStoreProcessor implements MsgStoreProcessor {
         FileUtil.createDirIfNotExists(Config.getInstance().getPmemDir());
 
         initMsgHeap();
-        //initIndexHeap();
     }
 
     private void initMsgHeap() {
         String path = Config.getInstance().getPmemMsgHeapPath();
         long heapSize = Config.getInstance().getPmemMsgHeapSize();
         this.msgHeap = Heap.exists(path) ? Heap.openHeap(path) : Heap.createHeap(path, heapSize);
-    }
-
-    private void initIndexHeap() {
-        String path = Config.getInstance().getPmemIndexHeapPath();
-        long heapSize = Config.getInstance().getPmemIndexHeapSize();
-        this.indexHeap = Heap.exists(path) ? Heap.openHeap(path) : Heap.createHeap(path, heapSize);
     }
 
     // pmem storage design:
@@ -77,26 +68,7 @@ public class PmemMsgStoreProcessor implements MsgStoreProcessor {
     }
 
 
-    // Data Structure:
-    //  indexHeap: [dataBlock1, dataBlock2, ...]
-    //      dataBlock: [currBlockWrotePosition, nextBlockHandle, indexItem1, indexItem2, ...]
-    //      indexItem: (queueOffset, msgBlockHandle)
-    //
     private void writeIndexHeap(String topic, int queueId, long queueOffset, long msgBlockHandleValue) {
-
-        // find the index heap by topic+queueId
-
-        // read from indexHeadBlock: get wrote position of index block
-        //long rootAddr = indexHeap.getRoot();
-        //MemoryBlock indexHeadBlock = indexHeap.memoryBlockFromHandle(rootAddr);
-        //long wrotePosition = indexHeadBlock.getLong(0);
-        //long indexBlockHandle = indexHeadBlock.getLong(8);
-
-        // write into indexDataBlock: append indexItem to index block
-        //MemoryBlock indexDataBlock = indexHeap.memoryBlockFromHandle(indexBlockHandle);
-        //indexDataBlock.setLong(wrotePosition, queueOffset);
-        //indexDataBlock.setLong(wrotePosition + 8, msgBlockHandleValue);
-        //indexDataBlock.flush();
     }
 
     /**

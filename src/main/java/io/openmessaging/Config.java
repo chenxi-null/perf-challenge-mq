@@ -174,7 +174,8 @@ public class Config {
     }
 
     public String getPmemIndexHeapPath() {
-        return "";
+        // TODO:
+        return getPmemDir() + "/index_heap";
     }
 
     public long getPmemMsgHeapSize() {
@@ -182,10 +183,15 @@ public class Config {
     }
 
     public long getPmemIndexHeapSize() {
-        return 0;
+        // TODO:
+        return 8388608;
     }
 
     public void setPmemMsgHeapSize(long pmemMsgHeapSize) {
         this.pmemMsgHeapSize = pmemMsgHeapSize;
+    }
+
+    public long getPmemIndexMemoryBlockSize() {
+        return 1024;
     }
 }
