@@ -5,7 +5,7 @@ import io.openmessaging.DefaultMessageQueueImpl;
 import io.openmessaging.MessageQueue;
 import io.openmessaging.util.FileUtil;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,8 +33,18 @@ public abstract class BaseTest {
 
     static Config config = Config.getInstance();
 
-    @BeforeAll
-    static void beforeAll() throws IOException {
+    private DefaultMessageQueueImpl mq;
+
+    protected DefaultMessageQueueImpl getMQ() {
+        return this.mq;
+    }
+
+    protected void setMQ(DefaultMessageQueueImpl mq) {
+        this.mq = mq;
+    }
+
+    @BeforeEach
+    void beforeEach() throws IOException {
         int size = "content-1-10001_1".getBytes().length;
         config.setOneWriteMaxDataSize(100);
         config.setBatchWriteMemBufferSizeThreshold(size + size);
@@ -60,12 +70,9 @@ public abstract class BaseTest {
         }
 
         System.out.println("---- finish file cleanup ---");
-    }
 
-    private final DefaultMessageQueueImpl mq = new DefaultMessageQueueImpl();
-
-    protected DefaultMessageQueueImpl getMQ() {
-        return this.mq;
+        this.mq = new DefaultMessageQueueImpl();
+        System.out.println("created mq instance");
     }
 
     @AfterEach

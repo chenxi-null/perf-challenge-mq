@@ -18,9 +18,6 @@ class IndexHeapTest extends BaseTest {
 
     static Config config = Config.getInstance();
 
-    IndexHeap indexHeap = getMQ().getStore().getIndexHeap();
-    TopicQueueTable topicQueueTable = getMQ().getStore().getTopicQueueTable();
-
     String topic1 = "-topic-1-";
     int queueId1 = 1101;
     int msgBlockHandle = 123;
@@ -33,6 +30,9 @@ class IndexHeapTest extends BaseTest {
 
     @Test
     void test() throws IOException {
+        IndexHeap indexHeap = getMQ().getStore().getIndexHeap();
+        TopicQueueTable topicQueueTable = getMQ().getStore().getTopicQueueTable();
+
         indexHeap.write(topic1, queueId1, 0, msgBlockHandle);
         indexHeap.load(topicQueueTable, topic1, queueId1);
         assertEquals(msgBlockHandle, topicQueueTable.getPmemOffset(topic1, queueId1, 0));
@@ -48,6 +48,7 @@ class IndexHeapTest extends BaseTest {
         // one item one block
         config.setPmemIndexMemoryBlockSize(16 + 16);
         try {
+            IndexHeap indexHeap = getMQ().getStore().getIndexHeap();
             // when: write into one block
             indexHeap.write(topic1, queueId1, 0, msgBlockHandle);
             // and: write into 2nd block
