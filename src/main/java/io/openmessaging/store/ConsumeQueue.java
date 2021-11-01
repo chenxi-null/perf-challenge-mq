@@ -116,7 +116,7 @@ public class ConsumeQueue implements StopWare {
      * - update mem topicQueueTable
      */
     private TopicQueueTable doRecover() throws IOException {
-        // TODO:
+        // TODO: move TopicQueueTable to store
         TopicQueueTable table = new TopicQueueTable();
 
         File dir = new File(Config.getInstance().getConsumerQueueRootDir());

@@ -16,6 +16,19 @@ import java.nio.ByteBuffer;
  */
 public class PmemMsgStoreProcessor implements MsgStoreProcessor {
 
+    // pmem storage design:
+    //
+    // 'msg':
+    // one heap, multi blocks: one msg one block
+    //
+    // 'index':
+    // multi heaps:
+    // one msg-queue one heap
+    //  multi blocks in a heap
+    //
+    // write into msgHeap, create a new mem block, get block handle value
+    // write the handle value into indexHeap
+
     private static final Logger log = LoggerFactory.getLogger(PmemMsgStoreProcessor.class);
 
     private final Store store;
@@ -38,19 +51,6 @@ public class PmemMsgStoreProcessor implements MsgStoreProcessor {
         this.msgHeap = Heap.exists(path) ? Heap.openHeap(path) : Heap.createHeap(path, heapSize);
     }
 
-    // pmem storage design:
-    //
-    // 'msg':
-    // msgHeap: one msg one block
-    //
-    // 'index':
-    // one queue one heap
-    //     indexHeap: only one block - indexItems
-    //         indexItem: (queueOffset, msgBlockHandle)
-    //
-    //
-    // write into msgHeap, create a new mem block, get block handle value
-    // write the handle value into indexHeap
     @Override
     public long write(String topic, int queueId, ByteBuffer data) throws Exception {
 

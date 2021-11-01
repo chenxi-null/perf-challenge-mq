@@ -157,6 +157,8 @@ public class Store implements StopWare {
             log.error("failed to stop consumeQueueSyncScheduledService", e);
         }
         this.consumeQueueService.stop();
+
+        this.indexHeap.stop();
     }
 
     public long write(String topic, int queueId, ByteBuffer data) throws IOException, InterruptedException {

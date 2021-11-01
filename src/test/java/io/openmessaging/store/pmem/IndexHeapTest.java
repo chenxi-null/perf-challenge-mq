@@ -64,6 +64,8 @@ class IndexHeapTest extends BaseTest {
             assertEquals(msgBlockHandle, tmpTable.getPmemOffset(topic1, queueId1, 0));
             assertEquals(msgBlockHandle2, tmpTable.getPmemOffset(topic1, queueId1, 1));
             assertEquals(msgBlockHandle3, tmpTable.getPmemOffset(topic1, queueId1, 2));
+
+            newMQ.stop();
         } finally {
             config.setPmemIndexMemoryBlockSize(origSize);
         }

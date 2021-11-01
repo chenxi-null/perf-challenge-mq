@@ -3,6 +3,7 @@ package io.openmessaging.store.pmem;
 import com.intel.pmem.llpl.Heap;
 import com.intel.pmem.llpl.MemoryBlock;
 import io.openmessaging.Config;
+import io.openmessaging.common.StopWare;
 import io.openmessaging.store.Store;
 import io.openmessaging.store.TopicQueueTable;
 import io.openmessaging.util.FileUtil;
@@ -21,7 +22,7 @@ import static io.openmessaging.util.Util.buildKey;
  * @author chenxi20
  * @date 2021/10/29
  */
-public class IndexHeap {
+public class IndexHeap implements StopWare  {
 
     // Data Structure:
     //  indexHeap: [dataBlock1, dataBlock2, ...]
@@ -88,11 +89,10 @@ public class IndexHeap {
     }
 
     private Heap createHeap(String topic, int queueId) throws IOException {
-        String dir = config.getPmemDir() + "/" + topic;
+        String dir = config.getPmemDir() + "/" + topic + "/" + queueId;
         FileUtil.createDirIfNotExists(dir);
-        String filename = dir + "/" + queueId;
-        return Heap.exists(filename) ?
-                Heap.openHeap(filename) : Heap.createHeap(filename, config.getPmemIndexHeapSize());
+        return Heap.exists(dir) ?
+                Heap.openHeap(dir) : Heap.createHeap(dir, config.getPmemIndexHeapSize());
     }
 
     public void write(String topic, int queueId, long queueOffset, long msgBlockHandle) throws IOException {
@@ -134,6 +134,7 @@ public class IndexHeap {
         return wrotePosition;
     }
 
+    // polish: change to static method, new instance of IndexHeap
     // only for testing
     public TopicQueueTable load() throws IOException {
         TopicQueueTable t = new TopicQueueTable();
@@ -208,5 +209,15 @@ public class IndexHeap {
         log.trace("topicQueueTable put ({}, {}), queueOffset: {}, msgBlockHandle: {}",
                 topic, queueId, queueOffset, msgBlockHandle);
         topicQueueTable.putByPmem(topic, queueId, queueOffset, msgBlockHandle);
+    }
+
+    @Override
+    public void stop() {
+        log.info("stop");
+        for (Heap heap : heaps.values()) {
+            // TODO: use reflection to invoke `close()` method
+            //heap.close();
+        }
+        heaps.clear();
     }
 }
