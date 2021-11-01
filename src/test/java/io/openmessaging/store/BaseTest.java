@@ -31,7 +31,7 @@ public abstract class BaseTest {
 
     private static final Logger log = LoggerFactory.getLogger(BaseTest.class);
 
-    private static Config config = Config.getInstance();
+    static Config config = Config.getInstance();
 
     @BeforeAll
     static void beforeAll() throws IOException {

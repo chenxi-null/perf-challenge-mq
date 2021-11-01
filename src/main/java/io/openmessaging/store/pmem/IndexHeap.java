@@ -3,6 +3,7 @@ package io.openmessaging.store.pmem;
 import com.intel.pmem.llpl.Heap;
 import com.intel.pmem.llpl.MemoryBlock;
 import io.openmessaging.Config;
+import io.openmessaging.store.Store;
 import io.openmessaging.store.TopicQueueTable;
 import io.openmessaging.util.FileUtil;
 import io.openmessaging.util.Util;
@@ -21,11 +22,23 @@ import java.util.Map;
  */
 public class IndexHeap {
 
+    // Data Structure:
+    //  indexHeap: [dataBlock1, dataBlock2, ...]
+    //      dataBlock: [currBlockWrotePosition, nextBlockHandle, indexItem1, indexItem2, ...]
+    //      indexItem: (queueOffset, msgBlockHandle)
+    //
+
     private static final Logger log = LoggerFactory.getLogger(IndexHeap.class);
 
     private Config config = Config.getInstance();
 
     private Map<String, MemoryBlock> blocks = new HashMap<>();
+
+    private Store store;
+
+    public IndexHeap(Store store) {
+        this.store = store;
+    }
 
     public void start() {
     }
@@ -59,11 +72,6 @@ public class IndexHeap {
         return memoryBlock;
     }
 
-    // Data Structure:
-    //  indexHeap: [dataBlock1, dataBlock2, ...]
-    //      dataBlock: [currBlockWrotePosition, nextBlockHandle, indexItem1, indexItem2, ...]
-    //      indexItem: (queueOffset, msgBlockHandle)
-    //
     public void write(String topic, int queueId, long queueOffset, long msgBlockHandle) throws IOException {
         MemoryBlock block = findBlock(topic, queueId);
 
@@ -73,6 +81,13 @@ public class IndexHeap {
         block.setLong(currBlockWrotePosition + 8, msgBlockHandle);
         block.setLong(0, currBlockWrotePosition + 16);
         block.flush();
+    }
+
+    // only for testing
+    public TopicQueueTable load() throws IOException {
+        TopicQueueTable t = new TopicQueueTable();
+        load(t);
+        return t;
     }
 
     public void load(TopicQueueTable topicQueueTable) throws IOException {
@@ -127,10 +142,14 @@ public class IndexHeap {
         for (long pos = 8 + 8; pos < currBlockWrotePosition; pos += 16) {
             long queueOffset = block.getLong(pos);
             long msgBlockHandle = block.getLong(pos + 8);
-            log.trace("topicQueueTable put ({}, {}), queueOffset: {}, msgBlockHandle: {}",
-                    topic, queueId, queueOffset, msgBlockHandle);
-            topicQueueTable.putByPmem(topic, queueId, queueOffset, msgBlockHandle);
+            updateMemTable(topicQueueTable, topic, queueId, queueOffset, msgBlockHandle);
         }
         // TODO: load next block
+    }
+
+    void updateMemTable(TopicQueueTable topicQueueTable, String topic, int queueId, long queueOffset, long msgBlockHandle) {
+        log.trace("topicQueueTable put ({}, {}), queueOffset: {}, msgBlockHandle: {}",
+                topic, queueId, queueOffset, msgBlockHandle);
+        topicQueueTable.putByPmem(topic, queueId, queueOffset, msgBlockHandle);
     }
 }

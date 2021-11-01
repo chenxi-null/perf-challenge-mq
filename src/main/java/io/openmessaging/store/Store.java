@@ -93,7 +93,7 @@ public class Store implements StopWare {
         this.pmemMsgStoreProcessor = new PmemMsgStoreProcessor(this);
         this.pmemMsgStoreProcessor.start();
 
-        this.indexHeap = new IndexHeap();
+        this.indexHeap = new IndexHeap(this);
         indexHeap.start();
 
         doStart();
