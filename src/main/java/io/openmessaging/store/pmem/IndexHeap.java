@@ -9,7 +9,9 @@ import io.openmessaging.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -41,16 +43,19 @@ public class IndexHeap {
     }
 
     private MemoryBlock createMemoryBlock(String topic, int queueId) throws IOException {
-        String dir = config.getPmemDir() + "/" + topic + "/" + queueId + "/index_heap";
+        log.debug("creating memory block");
+        String dir = config.getPmemDir() + "/" + topic;
         FileUtil.createDirIfNotExists(dir);
+        String filename = dir + "/" + queueId;
 
         long heapSize = config.getPmemIndexHeapSize();
         long blockSize = config.getPmemIndexMemoryBlockSize();
-        Heap heap = Heap.exists(dir) ? Heap.openHeap(dir) : Heap.createHeap(dir, heapSize);
+        Heap heap = Heap.exists(filename) ? Heap.openHeap(filename) : Heap.createHeap(filename, heapSize);
         MemoryBlock memoryBlock = heap.allocateMemoryBlock(blockSize, true);
         heap.setRoot(memoryBlock.handle());
 
         memoryBlock.setLong(0,8 + 8);
+        log.info("created memory block");
         return memoryBlock;
     }
 
@@ -70,8 +75,52 @@ public class IndexHeap {
         block.flush();
     }
 
+    public void load(TopicQueueTable topicQueueTable) throws IOException {
+        log.debug("loading topicQueueTable");
+        String dirPath = config.getPmemDir();
+        File dir = new File(dirPath);
+        File[] topicDirs = dir.listFiles();
+        if (topicDirs == null || topicDirs.length == 0) {
+            return;
+        }
+        log.trace("topicDirs: " + Arrays.toString(topicDirs));
+        for (File topicDir : topicDirs) {
+            if (topicDir.isFile()) {
+                continue;
+            }
+            String topicName = topicDir.getName();
+            File[] queueFiles = topicDir.listFiles();
+            if (queueFiles == null || queueFiles.length == 0) {
+                return;
+            }
+            log.trace("queueFiles: " + Arrays.toString(queueFiles));
+            for (File queueFile : queueFiles) {
+                String str = queueFile.getName();
+                int queueId;
+                try {
+                    queueId = Integer.parseInt(str);
+                } catch (NumberFormatException e) {
+                    continue;
+                }
+
+                String filename = queueFile.getAbsolutePath();
+                if (Heap.exists(filename)) {
+                    Heap heap = Heap.openHeap(filename);
+                    MemoryBlock block = heap.memoryBlockFromHandle(heap.getRoot());
+
+                    // init blocks
+                    this.blocks.put(Util.buildKey(topicName, queueId), block);
+
+                    // load into table
+                    load(topicQueueTable, topicName, queueId);
+                }
+            }
+        }
+    }
+
     // load in memory table
     public void load(TopicQueueTable topicQueueTable, String topic, int queueId) throws IOException {
+        log.info("loading topicQueueTable, ({}, {})", topic, queueId);
         MemoryBlock block = findBlock(topic, queueId);
 
         long currBlockWrotePosition = block.getLong(0);
@@ -82,5 +131,6 @@ public class IndexHeap {
                     topic, queueId, queueOffset, msgBlockHandle);
             topicQueueTable.putByPmem(topic, queueId, queueOffset, msgBlockHandle);
         }
+        // TODO: load next block
     }
 }

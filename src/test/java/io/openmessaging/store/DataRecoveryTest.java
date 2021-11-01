@@ -7,12 +7,39 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author chenxi20
  * @date 2021/10/21
  */
 public class DataRecoveryTest extends BaseTest {
+
+    @Test
+    void pmemDataRecovery() throws Exception {
+        Config.getInstance().setEnableConsumeQueueDataSync(false);
+        DefaultMessageQueueImpl mq = getMQ();
+        Store store = mq.getStore();
+        PmemMsgStoreProcessor p = store.getPmemMsgStoreProcessor();
+        TopicQueueTable origTable = store.getTopicQueueTable();
+
+        // write data
+        p.write("topic1", 1, toByteBuffer("-content1-"));
+        // shutdown
+        mq.stop();
+
+        // restart
+        mq = new DefaultMessageQueueImpl();
+
+        // check data
+        System.out.println(origTable);
+        System.out.println(mq.getStore().getTopicQueueTable());
+        assertTrue(mq.getStore().getTopicQueueTable().isSame(origTable));
+        assertEquals("-content1-",
+                toString(mq.getStore().getPmemMsgStoreProcessor().getData("topic1", 1, 0)));
+    }
+
+    //----------------------------------------------------
 
     @Test
     void canFindLastWrotePosition() throws IOException, InterruptedException {

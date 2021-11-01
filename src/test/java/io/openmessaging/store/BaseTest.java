@@ -52,10 +52,12 @@ public abstract class BaseTest {
         config.setPmemMsgHeapSize(8388608);
         config.setPmemIndexHeapSize(8388608);
         config.setPmemIndexMemoryBlockSize(1024);
-        String pmemDir = new File("./output/pmem").getCanonicalPath();
+        String pmemDir = new File("./output/pmem/mqx").getCanonicalPath();
         config.setPmemDir(pmemDir);
-        assertTrue(FileUtil.safeDeleteDirectory(pmemDir));
-        System.out.println("deleted pmem dir: " + pmemDir);
+        if (Files.exists(Paths.get(pmemDir))) {
+            assertTrue(FileUtil.safeDeleteDirectory(pmemDir));
+            System.out.println("deleted pmem dir: " + pmemDir);
+        }
 
         System.out.println("---- finish file cleanup ---");
     }

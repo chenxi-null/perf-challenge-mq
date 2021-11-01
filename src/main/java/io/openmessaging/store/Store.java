@@ -47,7 +47,7 @@ import java.util.concurrent.TimeUnit;
 //
 // data recovery:
 //    - recover ssd: consumeQueue, commitLog
-//    - recover pmem: don't need to recover if using llpl tx
+//    - recover pmem: don't need to recover if using llpl tx, just need load memTable
 //
 // convention:
 //  msg data in a queue is ordered by [ssd, pmem]
@@ -130,12 +130,19 @@ public class Store implements StopWare {
             consumeQueueSyncScheduledService
                     .scheduleAtFixedRate(consumeQueueService, 3, 3, TimeUnit.SECONDS);
         }
+
+        pmemDataRecovery();
     }
+
     private void dataRecovery() throws IOException {
 
         long maxPhysicalOffset = consumeQueue.recover();
 
         commitLog.recover(maxPhysicalOffset);
+    }
+
+    public void pmemDataRecovery() throws IOException {
+        indexHeap.load(getTopicQueueTable());
     }
 
     @Override

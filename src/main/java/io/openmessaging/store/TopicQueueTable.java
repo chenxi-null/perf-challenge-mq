@@ -62,6 +62,15 @@ public class TopicQueueTable {
         return maxQueueOffsets.getOrDefault(buildKey(topic, queueId), -1L) + 1;
     }
 
+    @Override
+    public String toString() {
+        return "TopicQueueTable{\n" +
+                " pmemOffsets=" + pmemOffsets +
+                ",\n phyOffsets=" + phyOffsets +
+                ",\n maxQueueOffsets=" + maxQueueOffsets +
+                '}';
+    }
+
     //----------------------------------------------------
 
     // for test

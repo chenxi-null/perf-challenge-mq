@@ -94,6 +94,9 @@ public class PmemMsgStoreProcessor implements MsgStoreProcessor {
     @Override
     public ByteBuffer getData(String topic, int queueId, long queueOffset) throws Exception {
         long pmemOffset = topicQueueTable().getPmemOffset(topic, queueId, queueOffset);
+        if (pmemOffset <= 0) {
+            return null;
+        }
         MemoryBlock msgBlock = msgHeap.memoryBlockFromHandle(pmemOffset);
         int size = (int) msgBlock.size();
         byte[] bytes = new byte[size];
