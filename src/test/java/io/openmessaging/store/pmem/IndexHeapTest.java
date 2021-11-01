@@ -26,5 +26,19 @@ class IndexHeapTest extends BaseTest {
         indexHeap.write(topic1, queueId1, 0, msgBlockHandle);
         indexHeap.load(topicQueueTable, topic1, queueId1);
         assertEquals(msgBlockHandle, topicQueueTable.getPmemOffset(topic1, queueId1, 0));
+
+        String topic2 = "-topic-2-";
+        int queueId2 = 1102;
+        int msgBlockHandle2 = 456;
+        indexHeap.write(topic2, queueId2, 0, msgBlockHandle2);
+        indexHeap.load(topicQueueTable, topic2, queueId2);
+        assertEquals(msgBlockHandle2, topicQueueTable.getPmemOffset(topic2, queueId2, 0));
+
+    }
+
+    // TODO:
+    @Test
+    void blockPartitionForOneQueue() {
+
     }
 }

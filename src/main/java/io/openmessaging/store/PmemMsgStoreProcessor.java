@@ -68,7 +68,8 @@ public class PmemMsgStoreProcessor implements MsgStoreProcessor {
     }
 
 
-    private void writeIndexHeap(String topic, int queueId, long queueOffset, long msgBlockHandleValue) {
+    private void writeIndexHeap(String topic, int queueId, long queueOffset, long msgBlockHandleValue) throws IOException {
+        store.getIndexHeap().write(topic, queueId, queueOffset, msgBlockHandleValue);
     }
 
     /**
