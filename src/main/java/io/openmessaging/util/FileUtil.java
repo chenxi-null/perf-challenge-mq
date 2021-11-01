@@ -24,7 +24,7 @@ public class FileUtil {
 
     public static void createDirIfNotExists(Path path) throws IOException {
         if (!Files.exists(path)) {
-            Files.createDirectory(path);
+            Files.createDirectories(path);
         }
     }
 

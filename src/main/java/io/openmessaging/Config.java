@@ -158,8 +158,12 @@ public class Config {
 
     public long pmemMsgHeapSize = 60L * 1024 * 1024 * 1024;
 
+    public long pmemIndexHeapSize = 10L * 1024;
+
+    public long pmemIndexMemoryBlockSize = 1024;
+
     // TODO:
-    public String pmemDir = "./output/pmem";
+    public String pmemDir = "/pmem";
 
     public String getPmemDir() {
         return pmemDir;
@@ -173,25 +177,27 @@ public class Config {
         return getPmemDir() + "/msg_heap";
     }
 
-    public String getPmemIndexHeapPath() {
-        // TODO:
-        return getPmemDir() + "/index_heap";
-    }
-
     public long getPmemMsgHeapSize() {
         return pmemMsgHeapSize;
-    }
-
-    public long getPmemIndexHeapSize() {
-        // TODO:
-        return 8388608;
     }
 
     public void setPmemMsgHeapSize(long pmemMsgHeapSize) {
         this.pmemMsgHeapSize = pmemMsgHeapSize;
     }
 
+    public long getPmemIndexHeapSize() {
+        return pmemIndexHeapSize;
+    }
+
+    public void setPmemIndexHeapSize(long pmemIndexHeapSize) {
+        this.pmemIndexHeapSize = pmemIndexHeapSize;
+    }
+
     public long getPmemIndexMemoryBlockSize() {
-        return 1024;
+        return pmemIndexMemoryBlockSize;
+    }
+
+    public void setPmemIndexMemoryBlockSize(long pmemIndexMemoryBlockSize) {
+        this.pmemIndexMemoryBlockSize = pmemIndexMemoryBlockSize;
     }
 }

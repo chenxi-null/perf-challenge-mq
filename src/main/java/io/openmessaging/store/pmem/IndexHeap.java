@@ -4,8 +4,14 @@ import com.intel.pmem.llpl.Heap;
 import com.intel.pmem.llpl.MemoryBlock;
 import io.openmessaging.Config;
 import io.openmessaging.store.TopicQueueTable;
+import io.openmessaging.util.FileUtil;
+import io.openmessaging.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author chenxi20
@@ -15,16 +21,37 @@ public class IndexHeap {
 
     private static final Logger log = LoggerFactory.getLogger(IndexHeap.class);
 
-    private Heap heap;
+    private Config config = Config.getInstance();
+
+    private Map<String, MemoryBlock> blocks = new HashMap<>();
 
     public void start() {
-        String path = Config.getInstance().getPmemIndexHeapPath();
-        long heapSize = Config.getInstance().getPmemIndexHeapSize();
-        this.heap = Heap.exists(path) ? Heap.openHeap(path) : Heap.createHeap(path, heapSize);
-        MemoryBlock memoryBlock = heap.allocateMemoryBlock(Config.getInstance().getPmemIndexMemoryBlockSize(), true);
+    }
+
+    MemoryBlock findBlock(String topic, int queueId) throws IOException {
+        String key = Util.buildKey(topic, queueId);
+        MemoryBlock block = blocks.get(key);
+        if (block != null) {
+            return block;
+        }
+
+        MemoryBlock memoryBlock = createMemoryBlock(topic, queueId);
+        blocks.put(key, memoryBlock);
+        return memoryBlock;
+    }
+
+    private MemoryBlock createMemoryBlock(String topic, int queueId) throws IOException {
+        String dir = config.getPmemDir() + "/" + topic + "/" + queueId + "/index_heap";
+        FileUtil.createDirIfNotExists(dir);
+
+        long heapSize = config.getPmemIndexHeapSize();
+        long blockSize = config.getPmemIndexMemoryBlockSize();
+        Heap heap = Heap.exists(dir) ? Heap.openHeap(dir) : Heap.createHeap(dir, heapSize);
+        MemoryBlock memoryBlock = heap.allocateMemoryBlock(blockSize, true);
         heap.setRoot(memoryBlock.handle());
 
         memoryBlock.setLong(0,8 + 8);
+        return memoryBlock;
     }
 
     // Data Structure:
@@ -32,11 +59,8 @@ public class IndexHeap {
     //      dataBlock: [currBlockWrotePosition, nextBlockHandle, indexItem1, indexItem2, ...]
     //      indexItem: (queueOffset, msgBlockHandle)
     //
-    public void write(String topic, int queueId, long queueOffset, long msgBlockHandle) {
-
-        // find the index heap by topic+queueId
-        //  create heap and block if needed
-        MemoryBlock block = heap.memoryBlockFromHandle(heap.getRoot());
+    public void write(String topic, int queueId, long queueOffset, long msgBlockHandle) throws IOException {
+        MemoryBlock block = findBlock(topic, queueId);
 
         long currBlockWrotePosition = block.getLong(0);
         log.trace("currBlockWrotePosition: {}", currBlockWrotePosition);
@@ -46,10 +70,9 @@ public class IndexHeap {
         block.flush();
     }
 
-    // load in mem
-    public void load(TopicQueueTable topicQueueTable, String topic, int queueId) {
-        // find the index heap by topic+queueId
-        MemoryBlock block = heap.memoryBlockFromHandle(heap.getRoot());
+    // load in memory table
+    public void load(TopicQueueTable topicQueueTable, String topic, int queueId) throws IOException {
+        MemoryBlock block = findBlock(topic, queueId);
 
         long currBlockWrotePosition = block.getLong(0);
         for (long pos = 8 + 8; pos < currBlockWrotePosition; pos += 16) {

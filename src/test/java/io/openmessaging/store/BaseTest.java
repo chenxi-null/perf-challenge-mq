@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -30,21 +31,32 @@ public abstract class BaseTest {
 
     private static final Logger log = LoggerFactory.getLogger(BaseTest.class);
 
+    private static Config config = Config.getInstance();
+
     @BeforeAll
-    static void beforeAll() {
+    static void beforeAll() throws IOException {
         int size = "content-1-10001_1".getBytes().length;
-        Config.getInstance().setOneWriteMaxDataSize(100);
-        Config.getInstance().setBatchWriteMemBufferSizeThreshold(size + size);
+        config.setOneWriteMaxDataSize(100);
+        config.setBatchWriteMemBufferSizeThreshold(size + size);
 
         String testRootDir = "./output/essd/mqx";
         Path testRootDirPath = Paths.get(testRootDir);
-        Config.getInstance().setRootDir(testRootDir);
+        config.setRootDir(testRootDir);
         System.out.println("reset rootDir: " + testRootDirPath.toFile().getAbsolutePath());
 
         if (Files.exists(testRootDirPath)) {
             assertTrue(FileUtil.safeDeleteDirectory(new File(testRootDir)));
-            System.out.println("deleted dir");
+            System.out.println("deleted ssd dir");
         }
+
+        config.setPmemMsgHeapSize(8388608);
+        config.setPmemIndexHeapSize(8388608);
+        config.setPmemIndexMemoryBlockSize(1024);
+        String pmemDir = new File("./output/pmem").getCanonicalPath();
+        config.setPmemDir(pmemDir);
+        assertTrue(FileUtil.safeDeleteDirectory(pmemDir));
+        System.out.println("deleted pmem dir: " + pmemDir);
+
         System.out.println("---- finish file cleanup ---");
     }
 
@@ -123,7 +135,7 @@ public abstract class BaseTest {
     }
 
     private final ThreadLocal<ByteBuffer> wroteByteBufferContext =
-            ThreadLocal.withInitial(() -> ByteBuffer.allocate(Config.getInstance().getOneWriteMaxDataSize()));
+            ThreadLocal.withInitial(() -> ByteBuffer.allocate(config.getOneWriteMaxDataSize()));
 
     ByteBuffer toByteBuffer(String s) {
         ByteBuffer wroteByteBuffer = wroteByteBufferContext.get();

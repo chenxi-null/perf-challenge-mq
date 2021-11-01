@@ -11,6 +11,10 @@ public class Util {
 
     private static final Logger log = LoggerFactory.getLogger(Util.class);
 
+    public static String buildKey(String topic, int queueId) {
+        return topic + "-" + queueId;
+    }
+
     public static void assertTrue(boolean expr) {
         assertTrue(expr, "");
     }
