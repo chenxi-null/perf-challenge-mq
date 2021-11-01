@@ -29,6 +29,8 @@ class IndexHeapTest extends BaseTest {
     int queueId2 = 1102;
     int msgBlockHandle2 = 456;
 
+    long msgBlockHandle3 = 789;
+
     @Test
     void test() throws IOException {
         indexHeap.write(topic1, queueId1, 0, msgBlockHandle);
@@ -48,8 +50,10 @@ class IndexHeapTest extends BaseTest {
         try {
             // when: write into one block
             indexHeap.write(topic1, queueId1, 0, msgBlockHandle);
-            // and: write into another block
+            // and: write into 2nd block
             indexHeap.write(topic1, queueId1, 1, msgBlockHandle2);
+            // and: write into 3rd block
+            indexHeap.write(topic1, queueId1, 2, msgBlockHandle3);
 
             // then: check file
             DefaultMessageQueueImpl newMQ = new DefaultMessageQueueImpl();
@@ -58,6 +62,7 @@ class IndexHeapTest extends BaseTest {
 
             assertEquals(msgBlockHandle, tmpTable.getPmemOffset(topic1, queueId1, 0));
             assertEquals(msgBlockHandle2, tmpTable.getPmemOffset(topic1, queueId1, 1));
+            assertEquals(msgBlockHandle3, tmpTable.getPmemOffset(topic1, queueId1, 2));
         } finally {
             config.setPmemIndexMemoryBlockSize(origSize);
         }
