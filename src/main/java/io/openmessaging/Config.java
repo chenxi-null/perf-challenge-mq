@@ -156,13 +156,19 @@ public class Config {
 
     //----------------------------------------------------
 
-    public long pmemMsgHeapSize = 60L * 1024 * 1024 * 1024;
+    // max size of index = max size of msg * 16
+    //  (125 * 1024 * 1024 * 1024) / (100 * 1024) * 16 -> 20,971,520 ( 20M)
+    //
+    // max size of index = queueNum * pmemIndexHeapSize
+    //  queueNum: 50w
+    //  500000 * 16 * 100 -> 800M
 
-    public long pmemIndexHeapSize = 10L * 1024;
+    public long pmemMsgHeapSize = (60L - 2) * 1024 * 1024 * 1024;
 
-    public long pmemIndexMemoryBlockSize = 1024;
+    public long pmemIndexHeapSize = 16L * 1024;
 
-    // TODO:
+    public long pmemIndexMemoryBlockSize = 16 * 128;
+
     public String pmemDir = "/pmem";
 
     public String getPmemDir() {
