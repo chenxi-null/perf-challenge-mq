@@ -23,7 +23,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author chenxi20
  * @date 2021/10/13
  */
-public class CommitLogProcessor implements StopWare {
+public class CommitLogProcessor implements StopWare, MsgStoreProcessor {
 
     //----------------------------------------------------
 
@@ -112,7 +112,9 @@ public class CommitLogProcessor implements StopWare {
     /**
      * @return queueOffset
      */
+    @Override
     public long write(String topic, int queueId, ByteBuffer data) throws InterruptedException {
+        log.trace("write ({}, {})", topic, queueId);
         Item item = new Item(topic, queueId, data);
         blockingQueue.put(item);
 
@@ -120,6 +122,15 @@ public class CommitLogProcessor implements StopWare {
         queueOffset = item.getDoneFuture().get();
         Util.assertNotNull(queueOffset);
         return queueOffset;
+    }
+
+    @Override
+    public ByteBuffer getData(String topic, int queueId, long offset) throws Exception {
+        long commitLogOffset = store.getTopicQueueTable().getPhyOffset(topic, queueId, offset);
+        if (commitLogOffset < 0) {
+            return null;
+        }
+        return store.getCommitLog().getData(commitLogOffset);
     }
 
     private static class ReadyBuffer {

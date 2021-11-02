@@ -77,6 +77,8 @@ public class Store implements StopWare {
 
     private IndexHeap indexHeap;
 
+    private StorageSelector storageSelector;
+
     public Store() throws IOException {
         start();
     }
@@ -95,6 +97,8 @@ public class Store implements StopWare {
 
         this.indexHeap = new IndexHeap(this);
         indexHeap.start();
+
+        this.storageSelector = new StorageSelector(this);
 
         doStart();
     }
@@ -161,18 +165,12 @@ public class Store implements StopWare {
         this.indexHeap.stop();
     }
 
-    public long write(String topic, int queueId, ByteBuffer data) throws IOException, InterruptedException {
-        // TODO: selector
-        return commitLogProcessor.write(topic, queueId, data);
+    public long write(String topic, int queueId, ByteBuffer data) throws Exception {
+        return storageSelector.selectWriter().write(topic, queueId, data);
     }
 
-    public ByteBuffer getData(String topic, int queueId, long offset) throws IOException {
-        // TODO: selector
-        long commitLogOffset = getTopicQueueTable().getPhyOffset(topic, queueId, offset);
-        if (commitLogOffset < 0) {
-            return null;
-        }
-        return commitLog.getData(commitLogOffset);
+    public ByteBuffer getData(String topic, int queueId, long offset) throws Exception {
+        return storageSelector.selectReader().getData(topic, queueId, offset);
     }
 
     public CommitLog getCommitLog() {
@@ -185,6 +183,10 @@ public class Store implements StopWare {
 
     public ConsumeQueue getConsumeQueue() {
         return consumeQueue;
+    }
+
+    public CommitLogProcessor getCommitLogProcessor() {
+        return commitLogProcessor;
     }
 
     public PmemMsgStoreProcessor getPmemMsgStoreProcessor() {

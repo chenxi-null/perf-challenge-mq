@@ -70,7 +70,7 @@ public class DefaultMessageQueueImpl extends MessageQueue implements StopWare {
             ByteBuffer data;
             try {
                 data = store.getData(topic, queueId, offset);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 throw new RuntimeException(e);
             }
             if (data != null) {

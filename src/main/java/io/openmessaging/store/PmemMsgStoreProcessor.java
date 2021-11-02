@@ -53,7 +53,7 @@ public class PmemMsgStoreProcessor implements MsgStoreProcessor {
 
     @Override
     public long write(String topic, int queueId, ByteBuffer data) throws Exception {
-
+        log.trace("write ({}, {})", topic, queueId);
         long queueOffset = topicQueueTable().calcNextQueueOffset(topic, queueId);
 
         long msgBlockHandle = writeMsgHeap(data);
@@ -105,6 +105,7 @@ public class PmemMsgStoreProcessor implements MsgStoreProcessor {
     }
 
     private ByteBuffer byteArrayToByteBuffer(byte[] bytes) {
+        //polish: reuse
         ByteBuffer byteBuffer = ByteBuffer.allocateDirect(bytes.length);
         byteBuffer.clear();
         byteBuffer.put(bytes);
