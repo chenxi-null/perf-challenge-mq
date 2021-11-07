@@ -75,8 +75,9 @@ public class PerfTest {
         writeAndReadPhase();
     }
 
-    //public static long MAX_SPACE_SIZE = 120L * 1024 * 1024 * 1024;
-    public static long MAX_SPACE_SIZE = 100 * 1024 * 1024;
+    //public static long MAX_SPACE_SIZE = 75L * 1024 * 1024 * 1024; // 75G
+    //public static long MAX_SPACE_SIZE = 100 * 1024 * 1024; // 100MB
+    public static long MAX_SPACE_SIZE = 1024 * 1024 * 1024; // 1G
 
     public static final int AWAIT_TIMEOUT_SECONDS = 20;
 
@@ -140,6 +141,7 @@ public class PerfTest {
         }
     }
 
+    // polish: make write frequency tricky
     @RequiredArgsConstructor
     static class WriteTask implements Runnable {
 
@@ -165,15 +167,6 @@ public class PerfTest {
 
         @Override
         public void run() {
-            if (stop) {
-                try {
-                    Thread.sleep(10000);
-                    return;
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
             try {
                 List<Integer> topicIndexes = threadIdxToTopicIndexes.get(threadIdx);
 
