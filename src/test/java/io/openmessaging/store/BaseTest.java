@@ -71,6 +71,7 @@ public abstract class BaseTest {
 
         System.out.println("---- finish file cleanup ---");
 
+        config.setEnablePmem(false);
         this.mq = new DefaultMessageQueueImpl();
         System.out.println("created mq instance");
     }
