@@ -129,7 +129,7 @@ public class Store implements StopWare {
     //                               cq, log, table
     //
     public void doStart() throws IOException {
-        dataRecovery();
+        ssdDataRecovery();
 
         consumeQueue.syncFromCommitLog();
 
@@ -139,10 +139,12 @@ public class Store implements StopWare {
                     .scheduleAtFixedRate(consumeQueueService, 3, 3, TimeUnit.SECONDS);
         }
 
-        pmemDataRecovery();
+        if (config.isEnablePmem()) {
+            pmemDataRecovery();
+        }
     }
 
-    private void dataRecovery() throws IOException {
+    private void ssdDataRecovery() throws IOException {
 
         long maxPhysicalOffset = consumeQueue.recover();
 
@@ -166,7 +168,9 @@ public class Store implements StopWare {
         }
         this.consumeQueueService.stop();
 
-        this.indexHeap.stop();
+        if (config.isEnablePmem()) {
+            this.indexHeap.stop();
+        }
     }
 
     public long write(String topic, int queueId, ByteBuffer data) throws Exception {
