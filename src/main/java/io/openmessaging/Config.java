@@ -156,6 +156,16 @@ public class Config {
 
     //----------------------------------------------------
 
+    private boolean enablePmem = true;
+
+    public boolean isEnablePmem() {
+        return enablePmem;
+    }
+
+    public void setEnablePmem(boolean enablePmem) {
+        this.enablePmem = enablePmem;
+    }
+
     // queueNum: 50w
     // max size of msg = 1,310,720 -> 130w
     //

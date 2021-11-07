@@ -62,6 +62,8 @@ public class Store implements StopWare {
 
     private static final Logger log = LoggerFactory.getLogger(Store.class);
 
+    private final Config config = Config.getInstance();
+
     private CommitLog commitLog;
 
     private ConsumeQueue consumeQueue;
@@ -92,11 +94,13 @@ public class Store implements StopWare {
 
         this.commitLogProcessor = new CommitLogProcessor(this);
 
-        this.pmemMsgStoreProcessor = new PmemMsgStoreProcessor(this);
-        this.pmemMsgStoreProcessor.start();
+        if (config.isEnablePmem()) {
+            this.pmemMsgStoreProcessor = new PmemMsgStoreProcessor(this);
+            this.pmemMsgStoreProcessor.start();
 
-        this.indexHeap = new IndexHeap(this);
-        indexHeap.start();
+            this.indexHeap = new IndexHeap(this);
+            this.indexHeap.start();
+        }
 
         this.storageSelector = new StorageSelector(this);
 
