@@ -1,14 +1,12 @@
-package io.openmessaging.store.perf;
+package io.openmessaging.perf;
 
 import io.openmessaging.Config;
 import io.openmessaging.DefaultMessageQueueImpl;
 import io.openmessaging.MessageQueue;
 import io.openmessaging.util.FileUtil;
+import io.openmessaging.util.Util;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +29,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static io.openmessaging.util.Util.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * @author chenxi20
@@ -46,7 +43,17 @@ public class PerfTest {
 
     private DefaultMessageQueueImpl mq;
 
-    @BeforeEach
+    private EvaluateRecorder evalRecorder = new EvaluateRecorder();
+
+    public static void main(String[] args) throws InterruptedException, IOException {
+        PerfTest test = new PerfTest();
+        test.test();
+    }
+
+    public PerfTest() throws IOException {
+        beforeEach();
+    }
+
     void beforeEach() throws IOException {
         String testRootDir = "./output/essd/mqx";
         Path testRootDirPath = Paths.get(testRootDir);
@@ -64,11 +71,9 @@ public class PerfTest {
         System.out.println("created mq instance");
     }
 
-    @AfterEach
     void tearDown() {
     }
 
-    @Test
     void test() throws InterruptedException {
         writePhase();
 
@@ -116,9 +121,11 @@ public class PerfTest {
 
         log.info("costTime: " + costTime);
         log.info("wrote size: " + wroteSize.get());
-        log.info("wrote time: " + wroteTime.get());
-        assertEquals(0, errorCounter.get());
-        assertTrue(stop);
+        log.info("wrote total num: " + wroteTime.get());
+        Util.assertTrue(errorCounter.get() == 0, "errorCounter: " + errorCounter.get());
+        Util.assertTrue(stop);
+
+        evalRecorder.record(costTime, wroteSize.get(), wroteTime.get());
     }
 
     private void allocateQueueForTopics(Map<Integer, List<Integer>> topicIdxToQueueIds) {

@@ -198,7 +198,7 @@ public class ConsumeQueue implements StopWare {
             try {
                 return new RandomAccessFile(file, "rw").getChannel();
             } catch (IOException e) {
-                log.error("failed to get fileChannel", e);
+                log.error("failed to get fileChannel, fileChannelMap size: {}", fileChannelMap.size(), e);
                 return null;
             }
         });
