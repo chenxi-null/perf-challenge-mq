@@ -47,7 +47,11 @@ public class PerfTest {
 
     public static void main(String[] args) throws InterruptedException, IOException {
         PerfTest test = new PerfTest();
-        test.test();
+        try {
+            test.test();
+        } finally {
+            test.tearDown();
+        }
     }
 
     public PerfTest() throws IOException {
@@ -66,12 +70,16 @@ public class PerfTest {
         }
         System.out.println("---- finish file cleanup ---");
 
+        System.out.println("disable consumeQueueDataSync");
+        config.setEnableConsumeQueueDataSync(false);
+
         config.setEnablePmem(false);
         this.mq = new DefaultMessageQueueImpl();
         System.out.println("created mq instance");
     }
 
     void tearDown() {
+        System.exit(0);
     }
 
     void test() throws InterruptedException {
@@ -81,10 +89,12 @@ public class PerfTest {
     }
 
     //public static long MAX_SPACE_SIZE = 75L * 1024 * 1024 * 1024; // 75G
-    //public static long MAX_SPACE_SIZE = 100 * 1024 * 1024; // 100MB
-    public static long MAX_SPACE_SIZE = 1024 * 1024 * 1024; // 1G
+    //public static long MAX_SPACE_SIZE = 100 * 1024 * 1024; // 100 MB
+    //public static long MAX_SPACE_SIZE = 1024 * 1024 * 1024; // 1G
+    //public static final int AWAIT_TIMEOUT_SECONDS = 20;
 
-    public static final int AWAIT_TIMEOUT_SECONDS = 20;
+    public static long MAX_SPACE_SIZE = 10L * 1024 * 1024 * 1024; // 10G
+    public static final int AWAIT_TIMEOUT_SECONDS = 200;
 
     public static int THREAD_NUM = 50;
 
