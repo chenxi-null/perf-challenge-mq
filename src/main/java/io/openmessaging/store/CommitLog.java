@@ -2,6 +2,7 @@ package io.openmessaging.store;
 
 import io.openmessaging.Config;
 import io.openmessaging.DefaultMessageQueueImpl;
+import io.openmessaging.common.Constants;
 import io.openmessaging.util.ChecksumUtil;
 import io.openmessaging.util.FileUtil;
 import io.openmessaging.util.Util;
@@ -29,7 +30,7 @@ public class CommitLog {
     private volatile long wrotePosition = 0;
 
     private final ByteBuffer wroteBuffer =
-            ByteBuffer.allocateDirect(Config.getInstance().getBatchWriteCommitLogMaxDataSize());
+            ByteBuffer.allocateDirect(Config.getInstance().getBatchWriteCommitLogMaxDataSize() + Constants._4kb);
 
     private final ByteBuffer itemBuffer =
             ByteBuffer.allocate(200 + Config.getInstance().getOneWriteMaxDataSize());
@@ -138,10 +139,7 @@ public class CommitLog {
             ++idx;
         }
 
-        wroteBuffer.flip();
-        fileChannel.position(startPhysicalOffset);
-        fileChannel.write(wroteBuffer);
-        fileChannel.force(true);
+        force(startPhysicalOffset);
 
         for (Item item : items) {
             updateTopicQueueTable(item.getTopic(), item.getQueueId(), item.getQueueOffset(), item.getPhysicalOffset());
@@ -151,6 +149,20 @@ public class CommitLog {
 
         setWrotePosition(nextPhysicalOffset);
         log.debug("wrote, physicalOffset: {}, nextPhysicalOffset: {}", startPhysicalOffset, nextPhysicalOffset);
+    }
+
+    private void force(long startPhysicalOffset) throws IOException {
+        // 4kb padded
+        int position = wroteBuffer.position();
+        int mod = position % Constants._4kb;
+        if (mod != 0) {
+            wroteBuffer.position(position + Constants._4kb - mod);
+        }
+
+        wroteBuffer.flip();
+        fileChannel.position(startPhysicalOffset);
+        fileChannel.write(wroteBuffer);
+        fileChannel.force(true);
     }
 
     /**
