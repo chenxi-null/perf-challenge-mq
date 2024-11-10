@@ -6,7 +6,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/28
  */
 public class StorageSelector {

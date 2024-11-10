@@ -12,7 +12,7 @@ import java.nio.channels.FileChannel;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/17
  */
 public class MappedFile {

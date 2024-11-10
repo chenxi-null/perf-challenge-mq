@@ -6,12 +6,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/8
  */
 public class InMemoryImpl extends MessageQueue {
 
-    //----------------------------------------------------
+    // ----------------------------------------------------
 
     ConcurrentHashMap<String, Map<Integer, Long>> appendOffset = new ConcurrentHashMap<>();
     ConcurrentHashMap<String, Map<Integer, Map<Long, ByteBuffer>>> appendData = new ConcurrentHashMap<>();

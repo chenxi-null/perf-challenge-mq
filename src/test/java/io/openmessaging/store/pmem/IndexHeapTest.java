@@ -11,7 +11,7 @@ import java.io.IOException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/31
  */
 class IndexHeapTest extends BaseTest {

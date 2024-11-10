@@ -1,7 +1,7 @@
 package io.openmessaging.util;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/31
  */
 public class ByteUtil {

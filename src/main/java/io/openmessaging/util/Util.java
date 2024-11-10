@@ -4,7 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/10
  */
 public class Util {
@@ -29,7 +29,7 @@ public class Util {
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
-            //Thread.interrupted();
+            // Thread.interrupted();
             log.error("occur InterruptedException", e);
         }
     }

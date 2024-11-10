@@ -24,7 +24,7 @@ import java.util.concurrent.CountDownLatch;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/11
  */
 public abstract class BaseTest {
@@ -83,11 +83,11 @@ public abstract class BaseTest {
     }
 
     /*
-    topic1: 10001(1, 2, 3), 10002(1), 10003(1)
-    topic2: 10001(1, 2), 10002(1)
-    //diff msg size
-    topic3: 12345(1)
-    topic4: 23456(1)
+     * topic1: 10001(1, 2, 3), 10002(1), 10003(1)
+     * topic2: 10001(1, 2), 10002(1)
+     * //diff msg size
+     * topic3: 12345(1)
+     * topic4: 23456(1)
      */
     int writeTestData(MessageQueue mq) throws InterruptedException {
         CountDownLatch startLatch = new CountDownLatch(1);
@@ -116,7 +116,7 @@ public abstract class BaseTest {
     }
 
     void prepareWriteTestData(CountDownLatch latch, CountDownLatch finishLatch,
-                              MessageQueue mq, String topic, int queueId, List<String> dataList) {
+            MessageQueue mq, String topic, int queueId, List<String> dataList) {
         new Thread(() -> {
             try {
                 latch.await();
@@ -132,7 +132,7 @@ public abstract class BaseTest {
     }
 
     void prepareWriteTestData(CountDownLatch latch, CountDownLatch finishLatch,
-                              MessageQueue mq, String topic, int queueId, String data) {
+            MessageQueue mq, String topic, int queueId, String data) {
         prepareWriteTestData(latch, finishLatch, mq, topic, queueId, Collections.singletonList(data));
     }
 
@@ -144,8 +144,8 @@ public abstract class BaseTest {
         return 2;
     }
 
-    private final ThreadLocal<ByteBuffer> wroteByteBufferContext =
-            ThreadLocal.withInitial(() -> ByteBuffer.allocate(config.getOneWriteMaxDataSize()));
+    private final ThreadLocal<ByteBuffer> wroteByteBufferContext = ThreadLocal
+            .withInitial(() -> ByteBuffer.allocate(config.getOneWriteMaxDataSize()));
 
     ByteBuffer toByteBuffer(String s) {
         ByteBuffer wroteByteBuffer = wroteByteBufferContext.get();

@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/8
  */
 class BasicFeatureTest extends BaseTest {
@@ -28,7 +28,6 @@ class BasicFeatureTest extends BaseTest {
     void baseTest_InMemoryImpl() throws InterruptedException {
         doBaseTest(new InMemoryImpl());
     }
-
 
     void doBaseTest(MessageQueue mq) throws InterruptedException {
 
@@ -68,7 +67,6 @@ class BasicFeatureTest extends BaseTest {
                     assertEquals("content-2-10001_2", toString(map.get(1)));
                 },
                 () -> {
-                }
-        );
+                });
     }
 }

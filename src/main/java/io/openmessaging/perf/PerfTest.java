@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import static io.openmessaging.util.Util.assertTrue;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/11/6
  */
 @Getter
@@ -88,10 +88,10 @@ public class PerfTest {
         writeAndReadPhase();
     }
 
-    //public static long MAX_SPACE_SIZE = 75L * 1024 * 1024 * 1024; // 75G
-    //public static long MAX_SPACE_SIZE = 100 * 1024 * 1024; // 100 MB
-    //public static long MAX_SPACE_SIZE = 1024 * 1024 * 1024; // 1G
-    //public static final int AWAIT_TIMEOUT_SECONDS = 20;
+    // public static long MAX_SPACE_SIZE = 75L * 1024 * 1024 * 1024; // 75G
+    // public static long MAX_SPACE_SIZE = 100 * 1024 * 1024; // 100 MB
+    // public static long MAX_SPACE_SIZE = 1024 * 1024 * 1024; // 1G
+    // public static final int AWAIT_TIMEOUT_SECONDS = 20;
 
     public static long MAX_SPACE_SIZE = 10L * 1024 * 1024 * 1024; // 10G
     public static final int AWAIT_TIMEOUT_SECONDS = 200;
@@ -220,7 +220,6 @@ public class PerfTest {
         }
     }
 
-
     // ---------------------- utils ----------------------
 
     static ByteBuffer genData(ByteBuffer b, Integer topicIndex, int queueId, int round) {
@@ -240,19 +239,22 @@ public class PerfTest {
         return b;
     }
 
-    //----------------------------------------------------
+    // ----------------------------------------------------
 
     private void writeAndReadPhase() {
         // keep writing
         // pick two kinds of queue, read data from those queues util all data is read
-        //  1. read from current max offset
-        //  2. read from min offset
+        // 1. read from current max offset
+        // 2. read from min offset
     }
 }
 
 /*
-评测程序会创建10~50个线程，每个线程随机若干个topic（topic总数<=100），每个topic有N个queueId（1 <= N <= 5,000），持续调用append接口进行写入；
-评测保证线程之间数据量大小相近（topic之间不保证），每个data的大小为100B-17KiB区间随机（伪随机数程度的随机），数据几乎不可压缩，需要写入总共75GiB的数据量。
-
-保持刚才的写入压力，随机挑选50%的队列从当前最大点位开始读取，剩下的队列均从最小点位开始读取（即从头开始），再写入总共50GiB后停止全部写入，读取持续到没有数据，然后停止。
+ * 评测程序会创建10~50个线程，每个线程随机若干个topic（topic总数<=100），每个topic有N个queueId（1 <= N <=
+ * 5,000），持续调用append接口进行写入；
+ * 评测保证线程之间数据量大小相近（topic之间不保证），每个data的大小为100B-17KiB区间随机（伪随机数程度的随机），数据几乎不可压缩，
+ * 需要写入总共75GiB的数据量。
+ * 
+ * 保持刚才的写入压力，随机挑选50%的队列从当前最大点位开始读取，剩下的队列均从最小点位开始读取（即从头开始），再写入总共50GiB后停止全部写入，
+ * 读取持续到没有数据，然后停止。
  */

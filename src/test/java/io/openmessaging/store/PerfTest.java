@@ -15,7 +15,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/19
  */
 @Disabled
@@ -89,7 +89,7 @@ public class PerfTest extends BaseTest {
         latch.countDown();
 
         boolean ok = executor.awaitTermination(30, TimeUnit.SECONDS);
-        //assertTrue(ok, "thread pool stp");
+        // assertTrue(ok, "thread pool stp");
     }
 
     Runnable wrap(Runnable r) {

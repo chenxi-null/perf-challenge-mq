@@ -19,15 +19,16 @@ import java.util.Map;
 import static io.openmessaging.util.Util.buildKey;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/29
  */
-public class IndexHeap implements StopWare  {
+public class IndexHeap implements StopWare {
 
     // Data Structure:
-    //  indexHeap: [dataBlock1, dataBlock2, ...]
-    //      dataBlock: [currBlockWrotePosition, nextBlockHandle, indexItem1, indexItem2, ...]
-    //      indexItem: (queueOffset, msgBlockHandle)
+    // indexHeap: [dataBlock1, dataBlock2, ...]
+    // dataBlock: [currBlockWrotePosition, nextBlockHandle, indexItem1, indexItem2,
+    // ...]
+    // indexItem: (queueOffset, msgBlockHandle)
     //
 
     private static final Logger log = LoggerFactory.getLogger(IndexHeap.class);
@@ -91,8 +92,7 @@ public class IndexHeap implements StopWare  {
     private Heap createHeap(String topic, int queueId) throws IOException {
         String dir = config.getPmemDir() + "/" + topic + "/" + queueId;
         FileUtil.createDirIfNotExists(dir);
-        return Heap.exists(dir) ?
-                Heap.openHeap(dir) : Heap.createHeap(dir, config.getPmemIndexHeapSize());
+        return Heap.exists(dir) ? Heap.openHeap(dir) : Heap.createHeap(dir, config.getPmemIndexHeapSize());
     }
 
     public void write(String topic, int queueId, long queueOffset, long msgBlockHandle) throws IOException {
@@ -117,7 +117,8 @@ public class IndexHeap implements StopWare  {
         }
     }
 
-    private void appendIndexItemToBlock(long queueOffset, long msgBlockHandle, MemoryBlock block, long blockWrotePosition) {
+    private void appendIndexItemToBlock(long queueOffset, long msgBlockHandle, MemoryBlock block,
+            long blockWrotePosition) {
         block.setLong(blockWrotePosition, queueOffset);
         block.setLong(blockWrotePosition + 8, msgBlockHandle);
         block.setLong(0, blockWrotePosition + 16);
@@ -205,7 +206,8 @@ public class IndexHeap implements StopWare  {
         }
     }
 
-    void updateMemTable(TopicQueueTable topicQueueTable, String topic, int queueId, long queueOffset, long msgBlockHandle) {
+    void updateMemTable(TopicQueueTable topicQueueTable, String topic, int queueId, long queueOffset,
+            long msgBlockHandle) {
         log.trace("topicQueueTable put ({}, {}), queueOffset: {}, msgBlockHandle: {}",
                 topic, queueId, queueOffset, msgBlockHandle);
         topicQueueTable.putByPmem(topic, queueId, queueOffset, msgBlockHandle);
@@ -216,7 +218,7 @@ public class IndexHeap implements StopWare  {
         log.info("stop");
         for (Heap heap : heaps.values()) {
             // TODO: use reflection to invoke `close()` method
-            //heap.close();
+            // heap.close();
         }
         heaps.clear();
     }

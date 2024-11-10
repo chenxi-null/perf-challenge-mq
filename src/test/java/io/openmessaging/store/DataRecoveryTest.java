@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/21
  */
 public class DataRecoveryTest extends BaseTest {
@@ -39,7 +39,7 @@ public class DataRecoveryTest extends BaseTest {
                 toString(mq.getStore().getPmemMsgStoreProcessor().getData("topic1", 1, 0)));
     }
 
-    //----------------------------------------------------
+    // ----------------------------------------------------
 
     @Test
     void canFindLastWrotePosition() throws IOException, InterruptedException {

@@ -4,7 +4,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/8
  */
 public class Config {
@@ -21,7 +21,6 @@ public class Config {
 
     private Path checkpointPath;
 
-
     private Config() {
         updateBatchWriteCommitLogMaxDataSize();
         setRootDir(DEFAULT_ROOT_DIR);
@@ -34,7 +33,8 @@ public class Config {
     public void setRootDir(String rootDir) {
         this.rootDirPath = Paths.get(rootDir);
 
-        String commitLogFile = rootDir + "/commitlog";;
+        String commitLogFile = rootDir + "/commitlog";
+        ;
         this.commitLogPath = Paths.get(commitLogFile);
 
         this.consumerQueueRootDir = rootDir;
@@ -63,7 +63,7 @@ public class Config {
         return enableConsumeQueueDataSync;
     }
 
-    //----------------------------------------------------
+    // ----------------------------------------------------
 
     private final int topicMaxByteNum = 100;
 
@@ -82,7 +82,7 @@ public class Config {
         return topicMaxByteNum;
     }
 
-    //----------------------------------------------------
+    // ----------------------------------------------------
 
     private int batchWriteThreadSizeThreshold = 30;
 
@@ -97,7 +97,7 @@ public class Config {
     private int batchWriteWaitTimeThreshold = 4;
 
     private void updateBatchWriteCommitLogMaxDataSize() {
-        this. batchWriteCommitLogMaxDataSize = batchWriteMemBufferSizeThreshold + 2 * oneWriteMaxDataSize;
+        this.batchWriteCommitLogMaxDataSize = batchWriteMemBufferSizeThreshold + 2 * oneWriteMaxDataSize;
     }
 
     public void setOneWriteMaxDataSize(int oneWriteMaxDataSize) {
@@ -146,7 +146,7 @@ public class Config {
         return batchWriteTimeWindowCheckInternal;
     }
 
-    //----------------------------------------------------
+    // ----------------------------------------------------
 
     private static final Config instance = new Config();
 
@@ -154,7 +154,7 @@ public class Config {
         return instance;
     }
 
-    //----------------------------------------------------
+    // ----------------------------------------------------
 
     private boolean enablePmem = true;
 
@@ -170,7 +170,7 @@ public class Config {
     // max size of msg = 1,310,720 -> 130w
     //
     // max size of index = max size of msg * 16 -> 20M
-    //  (125 * 1024 * 1024 * 1024) / (100 * 1024) * 16 -> 20,971,520 ( 20M)
+    // (125 * 1024 * 1024 * 1024) / (100 * 1024) * 16 -> 20,971,520 ( 20M)
 
     public long pmemMsgHeapSize = (60L - 2) * 1024 * 1024 * 1024;
 

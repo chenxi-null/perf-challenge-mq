@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/10
  */
 public class ConsumeQueueService implements Runnable, StopWare {

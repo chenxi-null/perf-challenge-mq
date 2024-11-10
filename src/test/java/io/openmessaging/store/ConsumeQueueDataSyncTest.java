@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/11
  */
 class ConsumeQueueDataSyncTest extends BaseTest {

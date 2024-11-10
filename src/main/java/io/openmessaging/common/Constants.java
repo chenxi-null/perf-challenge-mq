@@ -1,7 +1,7 @@
 package io.openmessaging.common;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/11/13
  */
 public class Constants {

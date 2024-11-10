@@ -20,29 +20,29 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/13
  */
 public class CommitLogProcessor implements StopWare, MsgStoreProcessor {
 
-    //----------------------------------------------------
+    // ----------------------------------------------------
 
     /*
-    enhancement:
-    - file partition
-    - MappedByteBuffer
-    - batch write
+     * enhancement:
+     * - file partition
+     * - MappedByteBuffer
+     * - batch write
      */
 
-    //----------------------------------------------------
+    // ----------------------------------------------------
 
     // caller:
-    //      put data and wait by Future
+    // put data and wait by Future
     //
     // coordinator:
-    //      - receive data
-    //      - flush disk when satisfied
-    //      - notify caller
+    // - receive data
+    // - flush disk when satisfied
+    // - notify caller
     //
     // [. . queue . . ] ---> [ .. readyBuffer .. ]
     //
@@ -54,13 +54,12 @@ public class CommitLogProcessor implements StopWare, MsgStoreProcessor {
     //
     // (2)
     // start a scheduled task that check in a fixed rate
-    //      if (currentTime - startTime > timeThreshold), then flush
+    // if (currentTime - startTime > timeThreshold), then flush
     //
     // (3)
     // if (itemSize > threadSizeThreshold)
     //
     // notify mechanism: Future
-
 
     private static final Logger log = LoggerFactory.getLogger(CommitLogProcessor.class);
 
@@ -68,12 +67,11 @@ public class CommitLogProcessor implements StopWare, MsgStoreProcessor {
 
     private final Store store;
 
-    private final ScheduledExecutorService timeWindowCheckScheduledService =
-            Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("batchWriteTimeCheckTask"));
+    private final ScheduledExecutorService timeWindowCheckScheduledService = Executors
+            .newSingleThreadScheduledExecutor(new NamedThreadFactory("batchWriteTimeCheckTask"));
 
-    private final ExecutorService batchWriteTaskService =
-            Executors.newSingleThreadExecutor(new NamedThreadFactory("batchWriteTask"));
-
+    private final ExecutorService batchWriteTaskService = Executors
+            .newSingleThreadExecutor(new NamedThreadFactory("batchWriteTask"));
 
     public CommitLogProcessor(Store store) {
         this.store = store;
@@ -158,7 +156,7 @@ public class CommitLogProcessor implements StopWare, MsgStoreProcessor {
             lock.lock();
             try {
                 items.add(item);
-                //noinspection NonAtomicOperationOnVolatileField
+                // noinspection NonAtomicOperationOnVolatileField
                 this.bufferSize += item.getData().limit(); // data.remaining();
             } finally {
                 lock.unlock();

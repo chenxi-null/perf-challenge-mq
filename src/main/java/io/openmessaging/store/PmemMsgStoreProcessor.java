@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/28
  */
 public class PmemMsgStoreProcessor implements MsgStoreProcessor {
@@ -24,7 +24,7 @@ public class PmemMsgStoreProcessor implements MsgStoreProcessor {
     // 'index':
     // multi heaps:
     // one msg-queue one heap
-    //  multi blocks in a heap
+    // multi blocks in a heap
     //
     // write into msgHeap, create a new mem block, get block handle value
     // write the handle value into indexHeap
@@ -67,8 +67,8 @@ public class PmemMsgStoreProcessor implements MsgStoreProcessor {
         return queueOffset;
     }
 
-
-    private void writeIndexHeap(String topic, int queueId, long queueOffset, long msgBlockHandleValue) throws IOException {
+    private void writeIndexHeap(String topic, int queueId, long queueOffset, long msgBlockHandleValue)
+            throws IOException {
         store.getIndexHeap().write(topic, queueId, queueOffset, msgBlockHandleValue);
     }
 
@@ -85,7 +85,7 @@ public class PmemMsgStoreProcessor implements MsgStoreProcessor {
     }
 
     private byte[] byteBufferToByteArray(ByteBuffer data) {
-        //polish: reuse
+        // polish: reuse
         byte[] bytes = new byte[data.remaining()];
         data.get(bytes);
         return bytes;
@@ -105,7 +105,7 @@ public class PmemMsgStoreProcessor implements MsgStoreProcessor {
     }
 
     private ByteBuffer byteArrayToByteBuffer(byte[] bytes) {
-        //polish: reuse
+        // polish: reuse
         ByteBuffer byteBuffer = ByteBuffer.allocateDirect(bytes.length);
         byteBuffer.clear();
         byteBuffer.put(bytes);

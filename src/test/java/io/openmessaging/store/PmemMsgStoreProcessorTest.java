@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/29
  */
 class PmemMsgStoreProcessorTest extends BaseTest {
@@ -22,7 +22,7 @@ class PmemMsgStoreProcessorTest extends BaseTest {
 
         String topic1 = "-topic-pmem-1";
         int queueId1 = 101;
-        //when:
+        // when:
         p.write(topic1, queueId1, toByteBuffer("-content-pmem-test-1-"));
 
         // then:

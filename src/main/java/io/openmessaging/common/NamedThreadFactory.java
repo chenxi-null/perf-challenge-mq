@@ -7,7 +7,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/15
  */
 public class NamedThreadFactory implements ThreadFactory {
@@ -20,7 +20,8 @@ public class NamedThreadFactory implements ThreadFactory {
 
     private final String name;
 
-    private final Thread.UncaughtExceptionHandler exceptionHandler = (t, e) -> log.error("[{}] thread occur exception", t.getName(), e);
+    private final Thread.UncaughtExceptionHandler exceptionHandler = (t, e) -> log.error("[{}] thread occur exception",
+            t.getName(), e);
 
     public NamedThreadFactory(String threadName) {
         SecurityManager s = System.getSecurityManager();

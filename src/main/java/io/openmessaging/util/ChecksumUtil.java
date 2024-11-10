@@ -4,7 +4,7 @@ import java.util.Objects;
 import java.util.zip.CRC32;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/22
  */
 public class ChecksumUtil {

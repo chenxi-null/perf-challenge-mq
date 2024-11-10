@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * @author chenxi20
+ * @author chenxi
  * @date 2021/10/10
  */
 public class TopicQueueTable {
@@ -71,7 +71,7 @@ public class TopicQueueTable {
                 '}';
     }
 
-    //----------------------------------------------------
+    // ----------------------------------------------------
 
     // for test
     public long getMsgNum() {
