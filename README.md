@@ -1,118 +1,121 @@
-我的中间件挑战赛题解代码。
 
-赛题链接：[2021第二届云原生编程挑战赛1：针对冷热读写场景的RocketMQ存储系统设计](https://tianchi.aliyun.com/competition/entrance/531922/information?spm=a2c22.12281976.0.0.bc163b32AlOyHd)
 
-排名：
-![|600](image/image.png)
+# My Middleware Challenge Solution Code
+
+## Competition Link
+[2021 2nd Cloud Native Programming Challenge 1: RocketMQ Storage System Design for Cold and Hot Read/Write Scenarios](https://tianchi.aliyun.com/competition/entrance/531922/information?spm=a2c22.12281976.0.0.bc163b32AlOyHd)
+
+## Ranking
+41/5096
+![|600](image/rank.png)
+
+## Languages
+- [English](README.md)
+- [中文](README-zh.md)
 
 ---
 
-# 赛题
+# Competition Problem Description
 
->写在前面: 
-> 1.在开始coding前请仔细阅读以下内容
+> **Note Before Coding:**
+> 1. Please read the following content carefully before starting to code.
 
-## 1. 赛题描述
-Apache RocketMQ作为的一款分布式的消息中间件，历年双十一承载了万亿级的消息流转，为业务方提供高性能低延迟的稳定可靠的消息服务。其中，实时读取写入数据和读取历史数据都是业务常见的存储访问场景，而且会在同一时刻同时出现，因此针对这个混合读写场景进行优化，可以极大的提升存储系统的稳定性。同时英特尔® 傲腾™ 持久内存作为一款与众不同的独立存储设备，可以缩小传统内存与存储之间的差距，有望给RocketMQ的性能再次飞跃提供一个支点。
-## 2 题目内容
-  实现一个单机存储引擎，提供以下接口来模拟消息的存储场景：
-  
-  写接口
+## 1. Problem Description
+Apache RocketMQ, as a distributed message middleware, has been carrying trillions of messages during the Double 11 shopping festival over the years, providing high-performance, low-latency, stable, and reliable message services to business parties. Real-time reading and writing of data, as well as reading historical data, are common storage access scenarios in business, and they often occur simultaneously. Therefore, optimizing for this mixed read/write scenario can greatly enhance the stability of the storage system. Additionally, Intel® Optane™ Persistent Memory, as a unique standalone storage device, can bridge the gap between traditional memory and storage, potentially providing a new lever for RocketMQ's performance leap.
 
-    - long append(String topic, int queueId, ByteBuffer data)
-    - 写不定长的消息至某个 topic 下的某个队列，要求返回的offset必须有序
+## 2. Problem Content
+Implement a standalone storage engine that provides the following interfaces to simulate message storage scenarios:
 
-    例子：按如下顺序写消息
+### Write Interface
+- `long append(String topic, int queueId, ByteBuffer data)`
+  - Write variable-length messages to a specific queue under a topic. The returned offset must be ordered.
 
-      {"topic":a,"queueId":1001, "data":2021}
-      {"topic":b,"queueId":1001, "data":2021}
-      {"topic":a,"queueId":1000, "data":2021}
-      {"topic":b,"queueId":1001, "data":2021}
+**Example:**
+Write messages in the following order:
+```json
+{"topic": "a", "queueId": 1001, "data": 2021}
+{"topic": "b", "queueId": 1001, "data": 2021}
+{"topic": "a", "queueId": 1000, "data": 2021}
+{"topic": "b", "queueId": 1001, "data": 2021}
+```
+Return results:
+```
+0
+0
+0
+1
+```
 
-    返回结果如下：
+### Read Interface
+- `Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum)`
+  - The returned `Map<offset, bytebuffer>` has the offset as the sequential offset in the Map, starting from 0.
 
-      0
-      0
-      0
-      1
+**Example:**
+```java
+getRange("a", 1000, 1, 2)
+Map{}
 
-  读接口
+getRange("b", 1001, 0, 2)
+Map{"0": "2021", "1": "2021"}
 
-    -Map<Integer, ByteBuffer> getRange(String topic, int queueId, long offset, int fetchNum)
-    -返回的 Map<offset, bytebuffer> 中 offset 为消息在 Map 中的顺序偏移，从0开始
-      
-    例子：
-      
-      getRange(a, 1000, 1, 2)
-      Map{}
+getRange("b", 1001, 1, 2)
+Map{"0": "2021"}
+```
 
-      getRange(b, 1001, 0, 2)
-      Map{"0": "2021", "1": "2021"}
+The evaluation environment provides 128G of Optane persistent memory, encouraging participants to use it to improve performance.
 
-      getRange(b, 1001, 1, 2)
-      Map{"0": "2021"}
-
-  评测环境中提供128G的傲腾持久内存，鼓励选手用其提高性能。
-
-## 3 语言限定
+## 3. Language Restriction
 JAVA
 
+## 4. Program Objective
+Carefully read the `MessageStore` and `DefaultMessageStoreImpl` classes in the demo project.
 
-## 4.  程序目标
+Your coding goal is to implement `DefaultMessageStoreImpl`.
 
-仔细阅读demo项目中的MessageStore，DefaultMessageStoreImpl两个类。
+**Note:**
+Logs should be printed directly to the console standard output. The evaluation program will collect the content of the console standard output for users to troubleshoot, but please do not print logs intensively. The maximum log size per evaluation should not exceed 100M; exceeding this limit will result in truncation.
 
-你的coding目标是实现DefaultMessageStoreImpl
+## 5. Test Environment Description
+1. **ECS Specification:** 4 cores, 8GB RAM, configured with 400G ESSD PL1 cloud disk (throughput up to 350MiB/s), and 126G Optane™ persistent memory.
+2. **Java Language Level:** Restricted to Java 8.
+3. **Allowed Libraries:** `llpl` library is pre-installed in the environment; participants should include it as `provided`.
+4. **Logging Library:** `log4j2` is pre-installed in the environment; participants should include it as `provided`.
+5. **Prohibited:** Use of JNI and other third-party libraries is not allowed.
 
-注：
-日志请直接打印在控制台标准输出。评测程序会把控制台标准输出的内容搜集出来，供用户排错，但是请不要密集打印日志，单次评测，最多不能超过100M，超过会截断
+## 6. Performance Evaluation
+The evaluation program will create 20~40 threads, each thread randomly selecting several topics (total topics <= 100), each topic with N queueIds (1 <= N <= 10,000), continuously calling the `append` interface for writing. The evaluation ensures that the data volume per thread is similar (not guaranteed between topics). Each data size is randomly between 100B-17KiB (pseudo-random level of randomness), and the data is almost incompressible, requiring a total write volume of 150GiB.
 
-## 5. 测试环境描述
+While maintaining the previous write pressure, randomly select 50% of the queues to read from the current maximum point, and the remaining queues to read from the minimum point (i.e., from the beginning). After writing a total of 100GiB, stop all writes and continue reading until there is no more data, then stop.
 
-1、    4核8G规格ECS，配置400G的ESSD PL1云盘（吞吐可达到350MiB/s），配置126G傲腾™持久内存。
+The evaluation considers the total time taken for the entire process. The timeout is 1800 seconds; exceeding this limit will result in forced exit.
 
-2、    限制Java语言级别到Java 8。
+The final ranking will change the evaluation data.
 
-3、    允许使用 llpl 库，预置到环境中，选手以provided方式引入。
+## 7. Correctness Evaluation
+Write several pieces of data.
 
-4、    允许使用 log4j2 日志库，预置到环境中，选手以provided方式引入。
+**Restart the ESC and clear the data on the Optane disk.**
 
-5、    不允许使用JNI和其它三方库。
+Read the data again, which must strictly equal the previously written data.
 
-## 6. 性能评测
-评测程序会创建20~40个线程，每个线程随机若干个topic（topic总数<=100），每个topic有N个queueId（1 <= N <= 10,000），持续调用append接口进行写入；评测保证线程之间数据量大小相近（topic之间不保证），每个data的大小为100B-17KiB区间随机（伪随机数程度的随机），数据几乎不可压缩，需要写入总共150GiB的数据量。
+## 8. Ranking and Evaluation Rules
+On the premise of passing the correctness evaluation, the ranking is based on the performance evaluation time, from the shortest to the longest.
 
-保持刚才的写入压力，随机挑选50%的队列从当前最大点位开始读取，剩下的队列均从最小点位开始读取（即从头开始），再写入总共100GiB后停止全部写入，读取持续到没有数据，然后停止。
+We will review the code of the top-ranked participants. If we find a large amount of copied code from others, we will adjust the ranking accordingly.
 
-评测考察维度包括整个过程的耗时。超时为1800秒，超过则强制退出。
+All messages should be stored according to the actual sent information; compression or falsification is not allowed.
 
-最终排行开始时会更换评测数据。
+The program should not be optimized specifically for data patterns; all optimizations must be general for random data.
 
-## 7. 正确性评测
-写入若干条数据。
+If cheating is detected, such as hacking the evaluation program and bypassing the necessary evaluation logic, the program will be invalid, and the participant's qualification will be canceled.
 
-**重启ESC，并清空傲腾盘上的数据**。
+## 9. Participation Method
+Find "Cloud Native Programming Challenge" on Alibaba Tianchi and sign up.
 
-再读出来，必须严格等于之前写入的数据。
+Register an account on `code.aliyun.com`, create a new repository, and add the official account `cloudnative-contest` as a project member with Reporter permissions.
 
-## 8. 排名和评测规则
-通过正确性评测的前提下，按照性能评测耗时，由耗时少到耗时多来排名。
+Fork or copy the `mqrace2021` repository code to your own repository and implement your logic; note that the implemented code must be placed in the specified package, otherwise, it will not be included in the evaluation.
 
-我们会对排名靠前的代码进行review，如果发现大量拷贝别人的代码，将酌情扣减名次。
+Submit your repository git address in the Tianchi submission entry and wait for the evaluation results.
 
-所有消息都应该进行按实际发送的信息进行存储，不可以压缩，不能伪造。
-
-程序不能针对数据规律进行针对性优化, 所有优化必须符合随机数据的通用性。
-
-如果发现有作弊行为，比如hack评测程序，绕过了必须的评测逻辑，则程序无效，且取消参赛资格。
-
-## 9. 参赛方法
-在阿里天池找到"云原生编程挑战赛"，并报名参加。
-
-在code.aliyun.com注册一个账号，新建一个仓库，将大赛官方账号cloudnative-contest 添加为项目成员，权限为Reporter 。
-
-fork或者拷贝mqrace2021仓库的代码到自己的仓库，并实现自己的逻辑；注意实现的代码必须放在指定package下，否则不会被包括在评测中。
-
-在天池提交成绩的入口，提交自己的仓库git地址，等待评测结果。
-
-及时保存日志文件，日志文件只保存1天。
+Save the log file in time, as it will only be saved for one day.
